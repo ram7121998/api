@@ -1242,6 +1242,8 @@ export const buyerUpdateTrade = async (req, res) => {
   }
 };
 
+
+
 // export const sellerUpdateTrade = async (req, res) => {
 //   const user = req.user; // Logged in user (seller)
 //   const D = (n) => new Prisma.Decimal(n);

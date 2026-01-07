@@ -105,7 +105,7 @@ export const verifyEmailOtp = async (req, res) => {
           });
 
           // ✅ Add notification record
-       const notification  =   await tx.notifications.create({
+          const notification = await tx.notifications.create({
             data: {
               user_id: user.user_id,
               title: "Email verified successfully.",
@@ -115,7 +115,7 @@ export const verifyEmailOtp = async (req, res) => {
               created_at: new Date()
             },
           });
-       io.to(notification.user_id.toString()).emit("new_notification", notification);
+          io.to(notification.user_id.toString()).emit("new_notification", notification);
 
           break;
       }
@@ -169,14 +169,14 @@ export const sendEmailOtp = async (req, res) => {
       });
     }
 
-    if (req.body.operation === "two_fa") {
-      if (!["buy", "sell"].includes(req.body.operation_type)) {
-        return res.status(400).json({
-          status: false,
-          message: "operation_type must be buy or sell",
-        });
-      }
-    }
+    // if (req.body.operation === "two_fa") {
+    //   if (!["buy", "sell"].includes(req.body.operation_type)) {
+    //     return res.status(400).json({
+    //       status: false,
+    //       message: "operation_type must be buy or sell",
+    //     });
+    //   }
+    // }
 
     const user_id = user.user_id;
     const email = user.email;
