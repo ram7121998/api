@@ -1,0 +1,991 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = "mysql://u678001706_p2pbackend:Admin$2026@auth-db1827.hstgr.io:3306/u678001706_p2pbackend"
+}
+
+model address_verifications {
+  addVer_id            BigInt                       @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id              BigInt                       @db.UnsignedBigInt
+  doc_type             String                       @db.VarChar(255)
+  residence_country    String                       @db.VarChar(255)
+  residence_State      String                       @db.VarChar(255)
+  residence_city       String                       @db.VarChar(255)
+  address_line1        String                       @db.VarChar(255)
+  address_line2        String?                      @db.VarChar(255)
+  residence_zip        String                       @db.VarChar(255)
+  document_front_image String                       @db.VarChar(255)
+  document_back_image  String                       @db.VarChar(255)
+  status               address_verifications_status @default(pending)
+  remark               String?                      @db.Text
+  created_at           DateTime?                    @db.Timestamp(0)
+  updated_at           DateTime?                    @db.Timestamp(0)
+
+  @@index([user_id], map: "address_verifications_user_id_foreign")
+}
+
+model addresses {
+  address_id           BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id              BigInt            @db.UnsignedBigInt
+  issuing_country      String            @db.VarChar(255)
+  id_type              addresses_id_type
+  residence_country    String            @db.VarChar(255)
+  residence_State      String            @db.VarChar(255)
+  residence_city       String            @db.VarChar(255)
+  address_line1        String            @db.VarChar(255)
+  address_line2        String?           @db.VarChar(255)
+  residence_zip        String            @db.VarChar(255)
+  document_front_image String            @db.VarChar(255)
+  document_back_image  String            @db.VarChar(255)
+  status               addresses_status  @default(pending)
+  remark               String?           @db.Text
+  created_at           DateTime?         @db.Timestamp(0)
+  updated_at           DateTime?         @db.Timestamp(0)
+  users                users             @relation("UserAddresses", fields: [user_id], references: [user_id])
+
+  @@index([user_id], map: "addresses_user_id_foreign")
+}
+
+model admin_assets {
+  admin_asset_id      BigInt                            @id @default(autoincrement()) @db.UnsignedBigInt
+  admin_id            BigInt                            @db.UnsignedBigInt
+  asset               String                            @db.VarChar(255)
+  asset_ticker        String                            @db.VarChar(255)
+  blockchain          String                            @db.VarChar(255)
+  network             String                            @db.VarChar(255)
+  wallet_address      String?                           @db.VarChar(255)
+  wallet_key          String?                           @db.VarChar(255)
+  contract_address    String?                           @db.VarChar(255)
+  total_deposit       Decimal                           @default(0.000000000000000000) @db.Decimal(30, 18)
+  total_withdraw      Decimal                           @default(0.000000000000000000) @db.Decimal(30, 18)
+  available_balance   Decimal                           @default(0.000000000000000000) @db.Decimal(30, 18)
+  withdrawal_fee_type admin_assets_withdrawal_fee_type  @default(percentage)
+  withdrawal_fee      Decimal                           @default(0.000000000000000000) @db.Decimal(30, 18)
+  total_revenue       Decimal                           @default(0.000000000000000000) @db.Decimal(30, 18)
+  withdrawal_type     admin_assets_withdrawal_type      @default(manual)
+  status              admin_assets_status               @default(active)
+  conversion_fee_type admin_assets_conversion_fee_type? @default(percentage)
+  conversion_fee      Decimal?                          @default(0.000000000000000000) @db.Decimal(30, 18)
+  last_updated_by     String?                           @db.LongText
+  created_at          DateTime?                         @db.Timestamp(0)
+  updated_at          DateTime?                         @db.Timestamp(0)
+  admins              admins                            @relation(fields: [admin_id], references: [admin_id], onUpdate: Restrict, map: "admin_assets_admin_id_foreign")
+
+  @@index([admin_id], map: "admin_assets_admin_id_foreign")
+}
+
+model admins {
+  admin_id           BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  name               String              @db.VarChar(255)
+  email              String              @unique(map: "admins_email_unique") @db.VarChar(255)
+  phone_number       String?             @unique(map: "admins_phone_number_unique") @db.VarChar(255)
+  password           String              @db.VarChar(255)
+  email_verified_at  DateTime?           @db.Timestamp(0)
+  profile_image      String?             @db.VarChar(255)
+  role               admins_role?        @default(admin)
+  login_with         admins_login_with?
+  login_status       admins_login_status @default(logout)
+  login_count        Int                 @default(1)
+  last_login         DateTime?           @db.Timestamp(0)
+  logged_in_device   String?             @db.VarChar(255)
+  loggedIn_device_ip String?             @db.VarChar(255)
+  user_status        admins_user_status  @default(active)
+  created_at         DateTime?           @db.Timestamp(0)
+  updated_at         DateTime?           @db.Timestamp(0)
+permissions        Json?               @default("[]")
+  admin_assets       admin_assets[]
+  sent_support_ticket_messages support_ticket_messages[] @relation("AdminSentMessages")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cache {
+  key        String @db.VarChar(255)
+  value      String @db.MediumText
+  expiration Int
+
+  @@ignore
+}
+
+model cache_locks {
+  key        String @id @db.VarChar(255)
+  owner      String @db.VarChar(255)
+  expiration Int
+}
+
+model crypto_ads {
+  crypto_ad_id          BigInt                      @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id               BigInt                      @db.UnsignedBigInt
+  cryptocurrency        crypto_ads_cryptocurrency
+  transaction_type      crypto_ads_transaction_type
+  payment_type          String?                     @db.VarChar(255)
+  payment_method        String                      @db.LongText
+  preferred_currency    String                      @db.VarChar(255)
+  country               String?                     @db.VarChar(255)
+  pricing_type          crypto_ads_pricing_type
+  price                 Decimal?                    @default(0.00000000) @db.Decimal(20, 8)
+  price_currency        String?                     @default("inr") @db.VarChar(255)
+  offer_margin          Decimal?                    @db.Decimal(10, 2)
+  min_trade_limit       Decimal                     @db.Decimal(10, 2)
+  max_trade_limit       Decimal                     @db.Decimal(10, 2)
+  remaining_trade_limit Decimal?                    @default(0.00000000) @db.Decimal(20, 8)
+  offer_time_limit      Int
+  offer_expiry          DateTime?                   @db.Timestamp(0)
+  offer_tags            String?                     @db.LongText
+  offer_label           String?                     @db.VarChar(25)
+  offer_terms           String?                     @db.Text
+  require_verification  Boolean                     @default(false)
+  visibility            crypto_ads_visibility       @default(public)
+  min_trade_requirement Int?
+  new_user_limit        Decimal?                    @db.Decimal(10, 2)
+  is_active             Boolean                     @default(true)
+  is_accepted           Boolean?                    @default(false)
+  avg_time              String?                     @db.VarChar(255)
+  created_at            DateTime?                   @db.Timestamp(0)
+  updated_at            DateTime?                   @db.Timestamp(0)
+  user users @relation(fields: [user_id], references: [user_id])
+  favorite_offers favorite_offers[]
+
+  @@index([user_id], map: "crypto_ads_user_id_foreign")
+}
+
+model crypto_testings {
+  crypto_ad_id          BigInt                           @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id               BigInt                           @db.UnsignedBigInt
+  cryptocurrency        crypto_testings_cryptocurrency
+  transaction_type      crypto_testings_transaction_type
+  payment_type          String                           @db.VarChar(255)
+  payment_method        String                           @db.LongText
+  preferred_currency    String                           @default("inr") @db.VarChar(255)
+  country               String                           @default("india") @db.VarChar(255)
+  pricing_type          crypto_testings_pricing_type
+  price                 Decimal?                         @default(0.00000000) @db.Decimal(20, 8)
+  offer_margin          Decimal?                         @db.Decimal(10, 3)
+  min_trade_limit       Decimal                          @default(0.00000000) @db.Decimal(20, 8)
+  max_trade_limit       Decimal                          @default(0.00000000) @db.Decimal(20, 8)
+  remaining_trade_limit Decimal?                         @default(0.00000000) @db.Decimal(20, 8)
+  offer_time_limit      Int
+  offer_expiry          DateTime?                        @db.Timestamp(0)
+  offer_tags            String?                          @db.LongText
+  offer_label           String?                          @db.VarChar(25)
+  offer_terms           String?                          @db.Text
+  require_verification  Boolean                          @default(false)
+  visibility            crypto_testings_visibility       @default(public)
+  min_trade_requirement Decimal?                         @db.Decimal(10, 2)
+  new_user_limit        Decimal?                         @db.Decimal(10, 2)
+  is_active             Boolean                          @default(true)
+  is_accepted           Boolean                          @default(false)
+  created_at            DateTime?                        @db.Timestamp(0)
+  updated_at            DateTime?                        @db.Timestamp(0)
+
+  @@index([user_id], map: "crypto_testings_user_id_foreign")
+}
+
+model email_events {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  email_id    String    @db.Char(36)
+  event       String    @db.VarChar(255)
+  meta        String?   @db.LongText
+  occurred_at DateTime  @default(now()) @db.Timestamp(0)
+  created_at  DateTime? @db.Timestamp(0)
+  updated_at  DateTime? @db.Timestamp(0)
+
+  @@index([email_id], map: "email_events_email_id_index")
+  @@index([event], map: "email_events_event_index")
+  @@index([occurred_at], map: "email_events_occurred_at_index")
+}
+
+model email_messages {
+  id                  String    @id @db.Char(36)
+  user_id             BigInt?   @db.UnsignedBigInt
+  email               String    @db.VarChar(255)
+  locale              String    @default("en") @db.VarChar(10)
+  category            String    @db.VarChar(255)
+  type                String    @db.VarChar(255)
+  template_key        String?   @db.VarChar(255)
+  template_data       String?   @db.LongText
+  subject             String    @db.VarChar(255)
+  body                String    @db.LongText
+  sender_address      String    @db.VarChar(255)
+  sender_name         String?   @db.VarChar(255)
+  status              String    @default("accepted") @db.VarChar(255)
+  scheduled_at        DateTime? @db.Timestamp(0)
+  sent_at             DateTime? @db.Timestamp(0)
+  provider_message_id String?   @db.VarChar(255)
+  error_message       String?   @db.Text
+  retry_count         Int       @default(0) @db.UnsignedTinyInt
+  created_at          DateTime? @db.Timestamp(0)
+  updated_at          DateTime? @db.Timestamp(0)
+
+  @@index([category], map: "email_messages_category_index")
+  @@index([email], map: "email_messages_email_index")
+  @@index([provider_message_id], map: "email_messages_provider_message_id_index")
+  @@index([scheduled_at], map: "email_messages_scheduled_at_index")
+  @@index([sent_at], map: "email_messages_sent_at_index")
+  @@index([status], map: "email_messages_status_index")
+  @@index([type], map: "email_messages_type_index")
+  @@index([user_id], map: "email_messages_user_id_index")
+}
+
+model email_otps {
+  otp_id     BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id    BigInt    @db.UnsignedBigInt
+  email      String    @unique(map: "email_otps_email_unique") @db.VarChar(255)
+  otp        Int
+  expires_at DateTime  @default(now()) @db.Timestamp(0)
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+
+  @@index([user_id], map: "email_otps_user_id_foreign")
+}
+
+model failed_jobs {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid       String   @unique(map: "failed_jobs_uuid_unique") @db.VarChar(255)
+  connection String   @db.Text
+  queue      String   @db.Text
+  payload    String   @db.LongText
+  exception  String   @db.LongText
+  failed_at  DateTime @default(now()) @db.Timestamp(0)
+}
+
+model favorite_offers {
+  fo_id        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id      BigInt    @db.UnsignedBigInt
+  crypto_ad_id BigInt    @db.UnsignedBigInt
+  created_at   DateTime? @db.Timestamp(0)
+  updated_at   DateTime? @db.Timestamp(0)
+  crypto_ad crypto_ads @relation(fields: [crypto_ad_id], references: [crypto_ad_id])
+
+  @@unique([user_id, crypto_ad_id], map: "favorite_offers_user_id_crypto_ad_id_unique")
+  @@index([crypto_ad_id], map: "favorite_offers_crypto_ad_id_foreign")
+}
+
+model feedback {
+  feedback_id      BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id          BigInt                 @db.UnsignedBigInt
+  crypto_ad_id     BigInt?                @db.UnsignedBigInt  // optional
+  trade_id         Int?                   @db.UnsignedInt
+  feedback_from    feedback_feedback_from @default(user)
+  feedback_from_id Int                    @db.UnsignedInt
+  like             Boolean                @default(false)
+  dislike          Boolean                @default(false)
+  review           String?                @db.Text
+  created_at       DateTime?              @db.Timestamp(0)
+  updated_at       DateTime?              @db.Timestamp(0)
+  user       users   @relation(fields: [user_id], references: [user_id])
+  @@index([user_id], map: "feedback_user_id_foreign")
+}
+
+model job_batches {
+  id             String  @id @db.VarChar(255)
+  name           String  @db.VarChar(255)
+  total_jobs     Int
+  pending_jobs   Int
+  failed_jobs    Int
+  failed_job_ids String  @db.LongText
+  options        String? @db.MediumText
+  cancelled_at   Int?
+  created_at     Int
+  finished_at    Int?
+}
+
+model jobs {
+  id           BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  queue        String @db.VarChar(255)
+  payload      String @db.LongText
+  attempts     Int    @db.UnsignedTinyInt
+  reserved_at  Int?   @db.UnsignedInt
+  available_at Int    @db.UnsignedInt
+  created_at   Int    @db.UnsignedInt
+
+  @@index([queue], map: "jobs_queue_index")
+}
+
+model migrations {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  migration String @db.VarChar(255)
+  batch     Int
+}
+
+model notification_reads {
+  notification_read_id BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  notification_id      BigInt    @db.UnsignedBigInt
+  user_id              BigInt    @db.UnsignedBigInt
+  seen_at              DateTime  @default(now()) @db.Timestamp(0)
+  created_at           DateTime? @db.Timestamp(0)
+  updated_at           DateTime? @db.Timestamp(0)
+  notification   notifications @relation(fields: [notification_id], references: [notification_id])
+  @@index([notification_id], map: "notification_reads_notification_id_foreign")
+  @@index([user_id], map: "notification_reads_user_id_foreign")
+}
+
+model notifications {
+  notification_id BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id         BigInt?            @db.UnsignedBigInt
+  title           String             @db.VarChar(255)
+  message         String             @db.Text
+  operation_type  String?            @db.VarChar(255)
+  operation_id    String?            @db.VarChar(100)
+  type            notifications_type
+  is_read         Boolean            @default(false)
+  created_at      DateTime?          @db.Timestamp(0)
+  updated_at      DateTime?          @db.Timestamp(0)
+  notification_reads notification_reads[]
+
+  @@index([user_id], map: "notifications_user_id_foreign")
+}
+
+model password_reset_tokens {
+  email      String    @id @db.VarChar(255)
+  token      String    @db.VarChar(255)
+  created_at DateTime? @db.Timestamp(0)
+}
+
+model payment_details {
+  pd_id                BigInt                       @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id              BigInt                       @db.UnsignedBigInt
+  account_type         payment_details_account_type @default(personal)
+  bank_account_country String                       @db.VarChar(255)
+  currency             String                       @db.VarChar(255)
+  bank_name            String                       @db.VarChar(255)
+  account_holder_name  String                       @db.VarChar(255)
+  custom_bank_details  String?                      @db.VarChar(255)
+  ifsc_code            String?                      @db.VarChar(255)
+  account_number       String                       @db.VarChar(255)
+  swift_bic_code       String?                      @db.VarChar(255)
+  residence_country    String?                      @db.VarChar(255)
+  state_region         String?                      @db.VarChar(255)
+  city                 String?                      @db.VarChar(255)
+  zip_code             String?                      @db.VarChar(255)
+  address              String?                      @db.VarChar(255)
+  is_primary           Boolean?                     @default(false)
+  status               payment_details_status       @default(pending)
+  remark               String?                      @db.VarChar(255)
+  created_at           DateTime?                    @db.Timestamp(0)
+  updated_at           DateTime?                    @db.Timestamp(0)
+
+  @@index([user_id], map: "payment_details_user_id_foreign")
+}
+
+model personal_access_tokens {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  tokenable_type String    @db.VarChar(255)
+  tokenable_id   BigInt    @db.UnsignedBigInt
+  name           String    @db.VarChar(255)
+  token          String    @unique(map: "personal_access_tokens_token_unique") @db.VarChar(512) // increase here
+  abilities      String?   @db.Text
+  last_used_at   DateTime? @db.Timestamp(0)
+  expires_at     DateTime? @db.Timestamp(0)
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  @@index([tokenable_type, tokenable_id], map: "personal_access_tokens_tokenable_type_tokenable_id_index")
+}
+
+model reports {
+  report_id      BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  reported_by_id BigInt    @db.UnsignedBigInt
+  reported_to_id BigInt?   @db.UnsignedBigInt
+  reason         String?   @db.VarChar(255)
+  description    String?   @db.Text
+  trade_id       BigInt?   @db.UnsignedBigInt
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+    reporter    users     @relation("Reporter", fields: [reported_by_id], references: [user_id])
+  reportedTo  users?    @relation("ReportedTo", fields: [reported_to_id], references: [user_id])
+
+  @@index([reported_by_id], map: "reports_reported_by_id_foreign")
+}
+
+model security_questions {
+  sq_id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id        BigInt    @db.UnsignedBigInt
+  question_order Int
+  question       String    @db.VarChar(255)
+  answer         String    @db.VarChar(255)
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  @@index([user_id], map: "security_questions_user_id_foreign")
+}
+
+model sessions {
+  id            String  @id @db.VarChar(255)
+  user_id       BigInt? @db.UnsignedBigInt
+  ip_address    String? @db.VarChar(45)
+  user_agent    String? @db.Text
+  payload       String  @db.LongText
+  last_activity Int
+
+  @@index([last_activity], map: "sessions_last_activity_index")
+  @@index([user_id], map: "sessions_user_id_index")
+}
+
+model settings {
+  setting_id        BigInt                     @id @default(autoincrement()) @db.UnsignedBigInt
+  withdraw_status   settings_withdraw_status   @default(enable)
+  deposit_status    settings_deposit_status    @default(enable)
+  withdraw_type     settings_withdraw_type     @default(manual)
+  min_withdraw      Decimal?                   @default(0.00000000) @db.Decimal(20, 8)
+  max_withdraw      Decimal?                   @default(0.00000000) @db.Decimal(20, 8)
+  trade_fee_type    settings_trade_fee_type?   @default(percentage)
+  trade_fee         Decimal?                   @default(0.00000000) @db.Decimal(20, 8)
+  wallet_key_phrase String?                    @db.VarChar(255)
+  wallet_key        Int?
+  user_registration settings_user_registration @default(enable)
+  updated_by        String                     @default("{}") @db.LongText
+  created_at        DateTime?                  @db.Timestamp(0)
+  updated_at        DateTime?                  @db.Timestamp(0)
+}
+
+model support_ticket_messages {
+  stm_id          BigInt                              @id @default(autoincrement()) @db.UnsignedBigInt
+  ticket_id       BigInt                              @db.UnsignedBigInt
+  sender_type     support_ticket_messages_sender_type @default(user)
+  admin_sender_id BigInt?   @db.UnsignedBigInt
+  sender_id       BigInt?     @db.UnsignedBigInt
+  message         String?                             @db.Text
+  attachments     String?                             @db.LongText
+  created_at      DateTime?                           @db.Timestamp(0)
+  updated_at      DateTime?                           @db.Timestamp(0)
+  ticket       support_tickets    @relation(fields: [ticket_id], references: [ticket_id], onDelete: Cascade)
+ sender users?   @relation("UserSentMessages", fields: [sender_id], references: [user_id]) 
+admin_sender admins?  @relation("AdminSentMessages", fields: [admin_sender_id], references: [admin_id])
+  @@index([ticket_id], map: "support_ticket_messages_ticket_id_foreign")
+}
+
+model support_tickets {
+  ticket_id     BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  ticket_number String                    @unique(map: "support_tickets_ticket_number_unique") @db.VarChar(255)
+  user_id       BigInt                    @db.UnsignedBigInt
+  subject       String                    @db.VarChar(255)
+  priority      support_tickets_priority? @default(medium)
+  status        support_tickets_status    @default(pending)
+  created_at    DateTime?                 @db.Timestamp(0)
+  updated_at    DateTime?                 @db.Timestamp(0)
+  user          users                     @relation(fields: [user_id], references: [user_id])
+  result        dispute_result?           
+  support_ticket_messages support_ticket_messages[]
+  trades           trades[]    @relation("TicketTrades", fields: [], references: [])
+
+
+  @@index([user_id], map: "support_tickets_user_id_foreign")
+}
+
+model trades {
+  trade_id              BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  initiated_by          Int
+    dispute_winner        trades_dispute_winner?
+  crypto_ad_id          String               @db.VarChar(255)
+  trade_type            trades_trade_type?
+  trade_step            trades_trade_step?   @default(dbgenerated("1"))
+  seller_id             String               @db.VarChar(255)
+  asset                 String               @db.VarChar(255)
+  amount                Decimal?             @db.Decimal(20, 8)
+  price                 Decimal?             @db.Decimal(20, 8)
+  payment               String?              @db.LongText
+  time_limit            DateTime?            @db.Timestamp(0)
+  avg_trade_time        String?              @db.VarChar(255)
+  seller_status         trades_seller_status @default(pending)
+  seller_remark         String?              @db.Text
+  seller_dispute_time   DateTime?            @db.Timestamp(0)
+  chat                  String?              @db.LongText
+
+  buyer_id              String?              @db.VarChar(255)
+  buy_amount            Decimal?             @db.Decimal(20, 8)
+  buy_value             Decimal?             @db.Decimal(30, 18)
+  hold_asset            Decimal?             @db.Decimal(30, 18)
+  payment_details       String?              @db.VarChar(255)
+  buyer_status          trades_buyer_status  @default(pending)
+  buyer_remark          String?              @db.Text
+  buyer_dispute_time    DateTime?            @db.Timestamp(0)
+  review                String?              @db.LongText
+  paid_at               DateTime?            @db.Timestamp(0)
+  asset_send_at         DateTime?            @db.Timestamp(0)
+  trade_status          trades_trade_status  @default(pending)
+  trade_remark          String?              @db.VarChar(255)
+  status_changed_at     DateTime?            @db.Timestamp(0)
+  is_disputed           Boolean              @default(false)
+  support_ticket_number String?              @db.VarChar(255)
+  created_at            DateTime?            @db.Timestamp(0)
+  updated_at            DateTime?            @db.Timestamp(0)
+  ticket support_tickets? @relation("TicketTrades", fields: [support_ticket_number], references: [ticket_number])
+
+
+}
+
+model transactions {
+  txn_id              BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id             BigInt                 @db.UnsignedBigInt
+  txn_type            transactions_txn_type?
+  from_address        String?                @db.VarChar(255)
+  to_address          String?                @db.VarChar(255)
+  txn_hash_id         String?                @db.VarChar(255)
+  asset               transactions_asset?    @default(eth)
+  network             transactions_network?  @default(erc20)
+  available_amount    Decimal?               @default(0.000000000000000000) @db.Decimal(30, 18)
+  credit_amount       Decimal?               @default(0.000000000000000000) @db.Decimal(30, 18)
+  debit_amount        Decimal?               @default(0.000000000000000000) @db.Decimal(30, 18)
+  transfer_percentage Decimal?               @db.Decimal(10, 6)
+  transfer_fee        Decimal?               @default(0.000000000000000000) @db.Decimal(30, 18)
+  paid_amount         Decimal?               @default(0.000000000000000000) @db.Decimal(30, 18)
+  remaining_amount    Decimal?               @default(0.000000000000000000) @db.Decimal(30, 18)
+  hold_asset          Decimal?               @default(0.000000000000000000) @db.Decimal(30, 18)
+  method              transactions_method?   @default(send)
+  status              transactions_status    @default(pending)
+  updated_buy         String?                @db.VarChar(255)
+  remark              String?                @db.Text
+  date_time           String                 @db.VarChar(255)
+  created_at          DateTime?              @db.Timestamp(0)
+  updated_at          DateTime?              @db.Timestamp(0)
+
+  @@index([user_id], map: "transactions_user_id_foreign")
+}
+
+model upi_details {
+  id         BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id    BigInt              @db.UnsignedBigInt
+  upi_name   String              @db.VarChar(255)
+  upi_id     String              @db.VarChar(255)
+  qr_code    String?             @db.VarChar(255)
+  caption    String?             @db.VarChar(255)
+  is_primary Boolean             @default(false)
+  status     upi_details_status? @default(pending)
+  remark     String?             @db.VarChar(255)
+  created_at DateTime?           @db.Timestamp(0)
+  updated_at DateTime?           @db.Timestamp(0)
+
+  @@index([user_id], map: "upi_details_user_id_foreign")
+}
+
+model user_login_details {
+  login_details_id    BigInt                          @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id             BigInt                          @db.UnsignedBigInt
+  token_id            String                          @db.VarChar(255)
+  two_fa_otp_verified Boolean?                        @default(false)
+  ip_address          String                          @db.VarChar(255)
+  device_details      String                          @db.Text
+  device              String?                         @db.VarChar(255)
+  browser             String?                         @db.VarChar(255)
+  os                  String?                         @db.VarChar(255)
+  os_version          String?                         @db.VarChar(255)
+  login_status        user_login_details_login_status @default(logout)
+  logged_in_at        DateTime                        @default(now()) @db.Timestamp(0)
+  created_at          DateTime?                       @db.Timestamp(0)
+  updated_at          DateTime?                       @db.Timestamp(0)
+  users               users                           @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: Restrict, map: "user_login_details_user_id_foreign")
+
+  @@index([user_id], map: "user_login_details_user_id_foreign")
+}
+
+model users {
+  user_id                      BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  name                         String?                   @db.VarChar(100)
+  username                     String?                   @db.VarChar(155)
+  display_name_preference String @default("firstName") @db.VarChar(20)
+  username_changed             Boolean                   @default(false)
+  email                        String?                   @unique(map: "email") @db.VarChar(255)
+  dialing_code                 String?                   @default("+91") @db.VarChar(255)
+  phone_number                 String?                   @unique(map: "users_phone_number_unique") @db.VarChar(255)
+  email_verified_at            DateTime?                 @db.Timestamp(0)
+  number_verified_at           DateTime?                 @db.Timestamp(0)
+  id_verified_at               DateTime?                 @db.Timestamp(0)
+  address_verified_at          DateTime?                 @db.Timestamp(0)
+  password                     String                    @db.VarChar(255)
+  two_factor_auth              Boolean?                  @default(false)
+  two_fa_otp_verified          Boolean?                  @default(false)
+  two_fa_set                   String?                   @db.LongText
+  user_level                   Int                       @default(0)
+  my_referral_code             String                    @db.VarChar(255)
+  referral_code                String?                   @db.VarChar(255)
+  bio                          String?                   @db.VarChar(255)
+  profile_image                String?                   @db.VarChar(255)
+  country                      String?                   @db.VarChar(255)
+  login_with                   users_login_with?
+  google_id                    String?                   @db.VarChar(105)
+  x_id                         String?                   @db.VarChar(255)
+  preferred_currency           String?                   @db.VarChar(10)
+  preferred_timezone           String?                   @default("Asia/Kolkata") @db.VarChar(50)
+  login_status                 users_login_status        @default(logout)
+  login_count                  Int                       @default(1)
+  last_login                   DateTime?                 @db.Timestamp(0)
+  last_seen                    DateTime?                 @db.Timestamp(0)
+  logged_in_device             String?                   @db.VarChar(255)
+  loggedIn_device_ip           String?                   @db.VarChar(255)
+  user_status                  users_user_status
+  remember_token               String?                   @db.VarChar(100)
+  created_at                   DateTime?                 @db.Timestamp(0)
+  updated_at                   DateTime?                 @db.Timestamp(0)
+  user_login_details           user_login_details[]
+  verification_data            verification_data[]
+  web3_wallets                 web3_wallets[]
+  addresses                    addresses[]               @relation("UserAddresses")
+  support_tickets              support_tickets[]
+  sent_support_ticket_messages support_ticket_messages[] @relation("UserSentMessages")
+    crypto_ads       crypto_ads[]
+      reportedBy    reports[] @relation("Reporter")
+  reportedUsers reports[] @relation("ReportedTo")
+feedback   feedback[] // normal feedback given TO this user
+
+
+}
+
+model verification_data {
+  verification_id BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id         BigInt    @db.UnsignedBigInt
+  aadhar_number   String    @unique(map: "verification_data_aadhar_number_unique") @db.VarChar(255)
+  access_token    String    @db.Text
+  reference_id    String    @db.VarChar(255)
+  created_at      DateTime? @db.Timestamp(0)
+  updated_at      DateTime? @db.Timestamp(0)
+  users           users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: Restrict, map: "verification_data_user_id_foreign")
+
+  @@index([user_id], map: "verification_data_user_id_foreign")
+}
+
+model web3_wallets {
+  wallet_id         BigInt                  @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id           BigInt                  @db.UnsignedBigInt
+  blockchain        web3_wallets_blockchain
+  network           web3_wallets_network
+  asset             web3_wallets_asset
+  wallet_address    String?                 @db.VarChar(255)
+  wallet_key        String?                 @db.VarChar(255)
+  deposit_amount    Decimal?                @default(0.0) @db.Decimal(30, 18)
+  withdrawal_amount Decimal?                @default(0.0) @db.Decimal(30, 18)
+  remaining_amount  Decimal?                @default(0.000000000000000000) @db.Decimal(30, 18)
+  web3_deposit      Decimal?                @default(0.000000000000000000) @db.Decimal(30, 18)
+  internal_deposit  Decimal?                @default(0.000000000000000000) @db.Decimal(30, 18)
+  hold_asset        Decimal?                @default(0.000000000000000000) @db.Decimal(30, 18)
+  status            web3_wallets_status     @default(active)
+  created_at        DateTime?               @db.Timestamp(0)
+  updated_at        DateTime?               @db.Timestamp(0)
+  users             users                   @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: Restrict, map: "web3_wallets_user_id_foreign")
+
+  @@index([user_id], map: "web3_wallets_user_id_foreign")
+}
+
+model website_details {
+  website_details_id BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  website_name       String?   @default("OnnBiT") @db.VarChar(255)
+  website_url        String?   @default("https://onnbit.com") @db.VarChar(255)
+  website_title      String?   @default("Cryptico") @db.VarChar(255)
+  logo_image         String?   @db.VarChar(255)
+  favicon_image      String?   @db.VarChar(255)
+  updated_by         String?   @db.LongText
+  created_at         DateTime? @db.Timestamp(0)
+  updated_at         DateTime? @db.Timestamp(0)
+}
+
+enum settings_withdraw_status {
+  enable
+  disable
+}
+
+enum support_ticket_messages_sender_type {
+  user
+  admin
+}
+
+enum settings_deposit_status {
+  enable
+  disable
+}
+
+enum transactions_txn_type {
+  internal
+  web3
+}
+
+enum crypto_testings_cryptocurrency {
+  bitcoin
+  ethereum
+  usdc
+  tether
+}
+
+enum payment_details_account_type {
+  personal
+  business
+}
+
+enum web3_wallets_blockchain {
+  ethereum
+  binance
+  tron
+  bitcoin
+}
+
+enum crypto_ads_cryptocurrency {
+  bitcoin
+  ethereum
+  binance
+  tether
+}
+
+enum feedback_feedback_from {
+  admin
+  user
+  buyer
+  seller
+}
+
+enum addresses_id_type {
+  passport
+  driving_licence @map("driving licence")
+  id_card         @map("id card")
+}
+
+enum settings_withdraw_type {
+  auto
+  manual
+}
+
+enum trades_trade_type {
+  buy
+  sell
+}
+
+enum crypto_testings_transaction_type {
+  buy
+  sell
+}
+
+enum web3_wallets_network {
+  erc20
+  bep20
+  trc20
+  btc
+}
+
+enum crypto_ads_transaction_type {
+  buy
+  sell
+}
+
+enum support_tickets_priority {
+  low
+  medium
+  high
+}
+
+enum web3_wallets_asset {
+  eth
+  bnb
+  usdt
+  btc
+}
+
+enum support_tickets_status {
+  pending
+  open
+  in_progress @map("in-progress")
+  resolved
+  closed
+}
+
+enum settings_trade_fee_type {
+  percentage
+  value
+}
+
+enum transactions_asset {
+  eth
+  bnb
+  usdt
+  btc
+}
+
+enum notifications_type {
+  account_activity
+  transaction
+  security
+  other
+  admin_announcement
+  trade
+  support
+}
+
+enum transactions_network {
+  erc20
+  bep20
+  trc20
+  btc
+}
+
+enum admins_role {
+  super_admin
+  admin
+  sub_admin
+}
+
+enum upi_details_status {
+  pending
+  verified
+  reject
+}
+
+enum crypto_testings_pricing_type {
+  market_price
+  fixed_price
+}
+
+enum admins_login_with {
+  email
+  phone
+}
+
+enum crypto_ads_pricing_type {
+  market_price
+  fixed_price
+}
+
+enum admins_login_status {
+  login
+  logout
+}
+
+enum settings_user_registration {
+  enable
+  disable
+}
+
+enum trades_trade_step {
+  ONE   @map("1")
+  TWO   @map("2")
+  THREE @map("3")
+  FOUR  @map("4")
+}
+
+enum user_login_details_login_status {
+  login
+  logout
+}
+
+enum address_verifications_status {
+  pending
+  verified
+  reject
+}
+
+enum addresses_status {
+  pending
+  verified
+  reject
+}
+
+enum trades_seller_status {
+  pending
+  processing
+  success
+  reject
+}
+
+enum admin_assets_withdrawal_fee_type {
+  percentage
+  fixed
+}
+
+enum web3_wallets_status {
+  active
+  hold
+}
+
+enum admins_user_status {
+  active
+  block
+  terminate
+}
+
+enum admin_assets_withdrawal_type {
+  manual
+  auto
+}
+
+enum transactions_method {
+  send
+  receive
+}
+
+enum admin_assets_status {
+  active
+  hold
+}
+
+enum transactions_status {
+  pending
+  success
+  failed
+  reject
+}
+
+enum payment_details_status {
+  pending
+  verified
+  reject
+}
+
+enum admin_assets_conversion_fee_type {
+  percentage
+  fixed
+}
+
+enum crypto_testings_visibility {
+  trusted_users
+  public
+}
+
+enum users_login_with {
+  email
+  phone
+  google
+  x
+  facebook
+}
+
+enum trades_buyer_status {
+  pending
+  processing
+  success
+  reject
+  cancel
+}
+
+enum crypto_ads_visibility {
+  trusted_users
+  public
+}
+
+enum users_login_status {
+  login
+  logout
+}
+
+enum trades_trade_status {
+  pending
+  processing
+  success
+  reject
+  expired
+  cancel
+  disputed
+  disputedSuccess
+}
+
+enum users_user_status {
+  active
+  block
+  terminate
+}
+
+enum dispute_result {
+  buyer
+  seller
+}
+enum trades_dispute_winner {
+  buyer
+  seller
+}
