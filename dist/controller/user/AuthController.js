@@ -128,6 +128,7 @@ export const register = async (req, res) => {
                     created_at: new Date(),
                 },
             });
+            
             const loginDetail = await tx.user_login_details.create({
                 data: {
                     user_id: user.user_id,

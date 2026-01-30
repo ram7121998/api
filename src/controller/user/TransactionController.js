@@ -799,16 +799,26 @@ export const convertAsset = async (req, res) => {
       });
     }
 
+    // if (
+    //   fromAssetWallet.remaining_amount < Number(fromAssetValue) ||
+    //   adminFromAsset.available_balance < Number(fromAssetValue)
+    // ) {
+    //   return res.status(400).json({
+    //     status: false,
+    //     message: "Insufficient balance in your wallet.",
+    //   });
+    // }
+
+
+    
     if (
-      fromAssetWallet.remaining_amount < Number(fromAssetValue) ||
-      adminFromAsset.available_balance < Number(fromAssetValue)
+      fromAssetWallet.remaining_amount < Number(fromAssetValue)
     ) {
       return res.status(400).json({
         status: false,
         message: "Insufficient balance in your wallet.",
       });
     }
-
     // ============================
     // START TRANSACTION
     // ============================
@@ -851,18 +861,16 @@ export const convertAsset = async (req, res) => {
           updated_at: new Date()
         },
       });
-
+console.log("transferFeetransferFee",transferFee)
       // UPDATE admin (fromAsset)
-      await tx.admin_assets.update({
-        where: { admin_asset_id: BigInt(adminFromAsset.admin_asset_id) },
-        data: {
-          total_revenue: Number(adminFromAsset.total_revenue) + Number(transferFee),
-          total_withdraw: Number(adminFromAsset.total_withdraw) + Number(totalFromValue),
-          available_balance:
-            Number(adminFromAsset.total_deposit) -
-            (Number(adminFromAsset.total_withdraw) + Number(totalFromValue)),
-        },
-      });
+    // Admin From Asset update only for fee
+await tx.admin_assets.update({
+  where: { admin_asset_id: BigInt(adminFromAsset.admin_asset_id) },
+  data: {
+    total_revenue: Number(adminFromAsset.total_revenue) + Number(transferFee),
+    available_balance: Number(adminFromAsset.available_balance) + Number(transferFee),
+  },
+});
 
       // UPDATE user wallet (toAsset)
       const toRemaining = Number(toAssetWallet.remaining_amount) + Number(toAssetValue);
@@ -876,18 +884,6 @@ export const convertAsset = async (req, res) => {
         },
       });
 
-      // UPDATE admin (toAsset)
-      await tx.
-        admin_assets.update({
-          where: { admin_asset_id: BigInt(adminToAsset.admin_asset_id) },
-          data: {
-            total_deposit: Number(adminToAsset.total_deposit) + Number(toAssetValue),
-            available_balance:
-              Number(adminToAsset.total_deposit) +
-              Number(toAssetValue) -
-              adminToAsset.total_withdraw,
-          },
-        });
 
       // CREATE TRANSACTIONS
       const txnHash = `TXN-${Date.now()}-${user.user_id}`;
