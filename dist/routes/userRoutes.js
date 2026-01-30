@@ -1,7 +1,7 @@
 import express from "express";
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import { sendEmailOtp, sendSmsOTP, verifyEmailOtp } from "../controller/OtpController.js";
-import { addNumber, login, logout, logoutFromOtherToken, passwordVerification, register, resetPassword, sendResetLink, updateTwoFA, updateTwoFaSet } from "../controller/user/AuthController.js";
+import { addNumber, login, logout, logoutFromOtherToken, passwordVerification, register, resetPassword, sendResetLink, updateTwoFA, updateTwoFaSet } from "../controller/user/authController.js";
 import { changePassword, getReferralLink, getSecurityQuestion, loginHistory, preferredCurrency, preferredTimezone, securityQuestion, updateBio, updateProfileImage, updateUsername, userDetail } from "../controller/user/UserController.js";
 import { addressVerification, getAddressVerification, getIdDetails, storeAddress } from "../controller/user/AddressVerificationController.js";
 import { singelUpload, upload, uploadAttachments } from "../middleware/upload.js";

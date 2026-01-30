@@ -152,7 +152,7 @@ export const register = async (req, res) => {
       const loginDetail = await tx.user_login_details.create({
         data: {
           user_id: user.user_id,
-          token_id: tokenIds.toString(),// ✅ Add this line
+          token_id: tokenIds.id.toString(),
           ip_address: ipAddress,
           device_details: JSON.stringify({ clientInfo, osInfo, device: deviceName }),
           device: deviceName,
@@ -163,6 +163,7 @@ export const register = async (req, res) => {
           logged_in_at: new Date(),
         },
       });
+      console.log("regisloginDetail", loginDetail)
       return { user: convertBigIntToString(user), token };
     });
     const safeData = convertBigIntToString(result)
@@ -367,9 +368,9 @@ export const login = async (req, res) => {
         console.log(`Send 2FA email to ${user.email} with OTP: ${otp}`);
       }
 
-await sendTradeEmail("SAFETY_TIPS", user.email, {
-  user_name: user.username
-});
+      await sendTradeEmail("SAFETY_TIPS", user.email, {
+        user_name: user.username
+      });
 
       // ------------------------
       // RETURN RESPONSE
@@ -456,8 +457,8 @@ export const updateTwoFA = async (req, res) => {
         created_at: new Date()
       };
 
-      const notification =  await tx.notifications.create({ data: notificationData });
-       io.to(notification.user_id.toString()).emit("new_notification", notification);
+      const notification = await tx.notifications.create({ data: notificationData });
+      io.to(notification.user_id.toString()).emit("new_notification", notification);
 
       return updatedUser;
     });
@@ -620,7 +621,7 @@ export const sendResetLink = async (req, res) => {
       },
     });
 
-    const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL}/password-reset/${token}?email=${encodeURIComponent(user.email)}`;
 
     await transporter.sendMail({
       from: process.env.MAIL_FROM_ADDRESS,
@@ -836,16 +837,16 @@ export const logout = async (req, res) => {
       if (!exists) {
         throw new Error("Token record not found in personal_access_tokens table");
       }
-      await tx.personal_access_tokens.delete({
-        where: { id: BigInt(tokenId) }
+      const personal = await tx.personal_access_tokens.delete({
+        where: { id: tokenId }
       });
 
-
+      console.log("Deleted token:", personal);
       // ------------------------
       // UPDATE LOGIN DETAILS
       // ------------------------
       const loginDetail = await tx.user_login_details.updateMany({
-        where: { user_id: BigInt(user.user_id), token_id: tokenId },
+        where: { user_id: user.user_id, token_id: tokenId },
         data: { login_status: "logout", two_fa_otp_verified: false },
       });
 
@@ -863,8 +864,8 @@ export const logout = async (req, res) => {
       if (!hasActiveTokens) {
         // UPDATE USER STATUS IF NO ACTIVE TOKENS
         await tx.users.update({
-          where: { user_id: BigInt(user.user_id) },
-          data: { login_status: "logout", two_fa_otp_verified: false ,last_seen: new Date()},
+          where: { user_id: user.user_id },
+          data: { login_status: "logout", two_fa_otp_verified: false, last_seen: new Date() },
         });
       }
 
@@ -1032,7 +1033,7 @@ export const addNumber = async (req, res) => {
       });
 
       // Add notification
-     const notification = await tx.notifications.create({
+      const notification = await tx.notifications.create({
         data: {
           user_id: user.user_id,
           title: "Phone number added successfully.",
