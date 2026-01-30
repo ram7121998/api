@@ -1,4 +1,3 @@
-// controllers/adminDashboardController.js
 import prisma from "../../config/prismaClient.js";
 
 export const getDashboard = async (req, res) => {
