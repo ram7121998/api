@@ -1,34 +1,14 @@
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
-
-dotenv.config();
 const prisma = new PrismaClient();
 
-/**
- * ============================
- * SENDGRID CONFIG
- * ============================
- */
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+dotenv.config();
 
-const MAIL_FROM = {
-    email: process.env.MAIL_FROM_ADDRESS,
-    name: process.env.MAIL_FROM_NAME || "ONNBIT"
-};
-
-const APP_NAME = process.env.APP_NAME || "onnbit.com";
-const APP_URL = process.env.APP_URL || "https://onnbit.com";
-
-/**
- * ============================
- * SEND WELCOME EMAIL
- * ============================
- */
 export const sendWelcomeEmail = async (req, res) => {
     try {
-        const user = req.user;
-
+        const user = req.user; // token se
         const userData = await prisma.users.findUnique({
             where: { user_id: BigInt(user.user_id) }
         });
@@ -40,19 +20,31 @@ export const sendWelcomeEmail = async (req, res) => {
             });
         }
 
-        const emailContent = welcomeEmailTemplate(
-            "Welcome to Our OnnBit Platform",
-            "Thank you for registering with us.",
-            {
-                name: userData.name + "!",
-                email: userData.email,
-                phone_number: userData.phone_number || ""
-            }
-        );
+        const subject = "Welcome to Our OnnBit Platform";
+        const message = "Thank you for registering with us.";
 
-        await sgMail.send({
+        const details = {
+            name: userData.name + '!',
+            email: userData.email,
+            phone_number: userData.phone_number || ""
+        };
+
+        // 👉 Template call
+        const emailContent = welcomeEmailTemplate(subject, message, details);
+
+        // 👉 Email transport
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.MAIL_FROM_ADDRESS,
+                pass: process.env.MAIL_PASSWORD
+            }
+        });
+
+        // 👉 Send email
+        await transporter.sendMail({
+            from: process.env.MAIL_FROM_ADDRESS,
             to: userData.email,
-            from: MAIL_FROM,
             subject: emailContent.subject,
             html: emailContent.html
         });
@@ -70,95 +62,78 @@ export const sendWelcomeEmail = async (req, res) => {
         });
     }
 };
+export const welcomeEmailTemplate = (subject, message, details) => {
+    return {
+        subject: subject,
+        html: `
+        <h2>Hello, ${details.name}</h2>
+        <p>${message}</p>
+        <p>Email: ${details.email}</p>
+        <br><br>
+        <p>Best Regards,</p>
+        <p>ONNBIT</p>
+        <hr>
+        <p><a href="https://test.onnbit.com/">ONNBIT</a></p>
+    `
+    };
+};
 
-/**
- * ============================
- * WELCOME EMAIL TEMPLATE
- * ============================
- */
-export const welcomeEmailTemplate = (subject, message, details) => ({
-    subject,
-    html: `
-    <h2>Hello, ${details.name}</h2>
-    <p>${message}</p>
-    <p>Email: ${details.email}</p>
-    <br/>
-    <p>Best Regards,</p>
-    <p><strong>${APP_NAME}</strong></p>
-    <hr/>
-    <p><a href="${APP_URL}">${APP_NAME}</a></p>
-  `
+
+
+// emailService.js
+export const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.MAIL_FROM_ADDRESS,
+        pass: process.env.MAIL_PASSWORD
+    }
 });
 
+const APP_NAME = process.env.APP_NAME || "onnbit.com";
+const APP_URL = process.env.APP_URL || "https://onnbit.com";
+
 /**
- * ============================
- * HTML WRAPPER
- * ============================
+ * HTML wrapper used by all templates
  */
 function wrapTemplate(subjectHeading, bodyHtml) {
     return `
-    <div style="font-family:Arial;background:#f7f7f7;padding:20px;">
-      <div style="max-width:600px;margin:auto;background:#fff;border-radius:8px;padding:25px;">
-        <h1 style="text-align:center;">${APP_NAME}</h1>
-        <p style="text-align:center;">
-          <a href="${APP_URL}">${APP_URL}</a>
+    <div style="font-family: Arial, sans-serif; background:#f7f7f7; padding:20px;">
+      <div style="
+          max-width:600px;
+          margin:auto;
+          background:white;
+          border-radius:8px;
+          padding:25px;
+          box-shadow:0 0 10px rgba(0,0,0,0.06);
+      ">
+        <h1 style="text-align:center; color:#333; margin-top:0; font-size:20px;">
+          ${APP_NAME}
+        </h1>
+        <p style="text-align:center; margin-top:-6px;">
+          <a href="${APP_URL}" style="color:#6c63ff; text-decoration:none;">${APP_URL}</a>
         </p>
-        <h2>${subjectHeading}</h2>
-        <div>${bodyHtml}</div>
-        <hr/>
-        <p style="font-size:12px;color:#999;text-align:center;">
+
+        <h2 style="color:#4a4a4a; font-size:18px; margin-bottom:6px;">${subjectHeading}</h2>
+
+        <div style="font-size:15px; color:#555; line-height:1.6;">
+          ${bodyHtml}
+        </div>
+
+        <hr style="margin:25px 0; border:none; border-top:1px solid #eee;" />
+
+        <p style="font-size:12px; color:#999; text-align:center;">
           This is an automated message. Do not reply.
         </p>
       </div>
-    </div>`;
+    </div>
+  `;
 }
 
 /**
- * ============================
- * EMAIL TEMPLATE BUILDER
- * ============================
+ * Build templates (matches PDF wording & flows)
  */
 function buildTemplate(type, data = {}) {
     switch (type) {
-
-        case "OTP_SEND":
-            return {
-                subject: `Your One-Time Password (OTP)`,
-
-                html: wrapTemplate(
-                    "OTP Verification",
-                    `
-        <p>Hello ${data.user_name || "User"},</p>
-
-        <p>Your One-Time Password (OTP) is:</p>
-
-        <div style="
-          margin:16px 0;
-          padding:14px;
-          text-align:center;
-          border:1px solid #eee;
-          border-radius:6px;
-          background:#fafafa;
-        ">
-          <p style="font-size:26px;font-weight:bold;letter-spacing:4px;margin:8px 0;">
-            ${data.otp_code || ""}
-          </p>
-        </div>
-
-        <p><b>Valid for:</b> ${data.otp_expiry_minutes || 5} minutes</p>
-
-        <p style="color:#d9534f;">
-          Do not share this OTP with anyone.
-          ${APP_NAME} will never ask for your OTP or password.
-        </p>
-
-        <p>
-          Regards,<br/>
-          <b>${APP_NAME} Security Team</b>
-        </p>
-      `
-                )
-            };
 
         case "TRADE_INITIATED":
             return {
@@ -474,12 +449,12 @@ function buildTemplate(type, data = {}) {
             `
                 )
             };
-        case "ADMIN_MESSAGE":
-            return {
-                subject: `Message from Admin regarding Trade #${data.trade_id}`,
-                html: wrapTemplate(
-                    "New Message from Admin",
-                    `
+           case "ADMIN_MESSAGE":
+    return {
+        subject: `Message from Admin regarding Trade #${data.trade_id}`,
+        html: wrapTemplate(
+            "New Message from Admin",
+            `
             <p>Hi ${data.user_name || "User"},</p>
 
             <p>The admin has sent you a message regarding your trade <strong>#${data.trade_id}</strong>:</p>
@@ -492,8 +467,8 @@ function buildTemplate(type, data = {}) {
 
             <p>Regards,<br/>${data.platform_name || APP_NAME} Team</p>
             `
-                )
-            };
+        )
+    };
 
         case "SAFETY_TIPS":
             return {
@@ -520,44 +495,24 @@ function buildTemplate(type, data = {}) {
     }
 }
 
-
 /**
- * ============================
- * SEND ANY EMAIL
- * ============================
+ * Send email (transporter automatically used)
  */
 export async function sendTradeEmail(type, to, data = {}) {
+
     const template = buildTemplate(type, data);
 
     if (!template) {
         throw new Error("Invalid email template type: " + type);
     }
 
-    console.log("Sending email to:", to);
-
-    try {
-        const response = await sgMail.send({
-            to,
-            from: MAIL_FROM,
-            bcc: "team.raitechcorporation@gmail.com",
-            subject: template.subject,
-            html: template.html
-        });
-
-        // SendGrid returns an array of responses
-        console.log("SendGrid response:", response);
-
-        return response;
-    } catch (error) {
-        // More detailed error info
-        if (error.response) {
-            console.error("SendGrid error response:", error.response.body);
-        } else {
-            console.error("SendGrid error:", error.message);
-        }
-        throw error; // rethrow if needed
-    }
+    return transporter.sendMail({
+        from: process.env.MAIL_FROM_ADDRESS,
+        to,
+        bcc: "Team.raitechcorporation@gmail.com",
+        subject: template.subject,
+        html: template.html
+    });
 }
 
-export { wrapTemplate };
-
+export { buildTemplate, wrapTemplate };

@@ -26,16 +26,16 @@ export const registerValidation = [
         .isLength({ min: 8 })
         .withMessage("Password must be at least 8 characters long")
         .custom((value) => {
-        if (!/[A-Z]/.test(value))
-            throw new Error("Password must contain an uppercase letter");
-        if (!/[a-z]/.test(value))
-            throw new Error("Password must contain a lowercase letter");
-        if (!/[0-9]/.test(value))
-            throw new Error("Password must contain a number");
-        if (!/[!@#$%^&*(),.?\":{}|<>]/.test(value))
-            throw new Error("Password must contain a special character");
-        return true;
-    }),
+            if (!/[A-Z]/.test(value))
+                throw new Error("Password must contain an uppercase letter");
+            if (!/[a-z]/.test(value))
+                throw new Error("Password must contain a lowercase letter");
+            if (!/[0-9]/.test(value))
+                throw new Error("Password must contain a number");
+            if (!/[!@#$%^&*(),.?\":{}|<>]/.test(value))
+                throw new Error("Password must contain a special character");
+            return true;
+        }),
     body("referralCode").optional().isString(),
 ];
 // Function to generate username and referral code
@@ -128,7 +128,7 @@ export const register = async (req, res) => {
                     created_at: new Date(),
                 },
             });
-            
+
             const loginDetail = await tx.user_login_details.create({
                 data: {
                     user_id: user.user_id,
@@ -298,8 +298,9 @@ export const login = async (req, res) => {
             // ------------------------
             // TWO-FACTOR AUTH (2FA)
             // ------------------------
+            const otp = Math.floor(100000 + Math.random() * 900000);
+
             if (user.two_factor_auth) {
-                const otp = Math.floor(100000 + Math.random() * 900000);
                 const existingOtp = await prisma.email_otps.findFirst({ where: { user_id: BigInt(user.user_id) } });
                 if (existingOtp) {
                     await prisma.email_otps.update({
@@ -317,11 +318,19 @@ export const login = async (req, res) => {
                         },
                     });
                 }
+
                 console.log(`Send 2FA email to ${user.email} with OTP: ${otp}`);
             }
+
+            await sendTradeEmail("OTP_SEND", user.email, {
+                user_name: user.name,
+                otp_code: otp,
+                otp_expiry_minutes: 5
+            });
             await sendTradeEmail("SAFETY_TIPS", user.email, {
                 user_name: user.username
             });
+
             // ------------------------
             // RETURN RESPONSE
             // ------------------------
@@ -757,7 +766,7 @@ export const logout = async (req, res) => {
                 // UPDATE USER STATUS IF NO ACTIVE TOKENS
                 await tx.users.update({
                     where: { user_id: BigInt(user.user_id) },
-                    data: { login_status: "logout", two_fa_otp_verified: false,  last_seen: new Date()},
+                    data: { login_status: "logout", two_fa_otp_verified: false, last_seen: new Date() },
                 });
             }
             // ------------------------

@@ -5,7 +5,9 @@ import nodemailer from "nodemailer";
 import { validationResult, body } from "express-validator";
 import axios from "axios";
 
+import sgMail from "@sendgrid/mail";
 
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const prisma = new PrismaClient();
 
 export const verifyEmailOtp = async (req, res) => {
@@ -31,7 +33,7 @@ export const verifyEmailOtp = async (req, res) => {
         message: "Invalid operation type",
       });
     }
-    console.log(otp, user.user_id)
+    console.log("otp2", otp, user.user_id)
     // ✅ Start transaction
     const result = await prisma.$transaction(async (tx) => {
       // ✅ Find OTP record
@@ -145,16 +147,6 @@ export const verifyEmailOtp = async (req, res) => {
   }
 };
 
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: process.env.MAIL_PORT,
-  secure: false,
-  auth: {
-    user: process.env.MAIL_USERNAME,
-    pass: process.env.MAIL_PASSWORD,
-  },
-});
-
 export const sendEmailOtp = async (req, res) => {
   const user = req.user;
 
@@ -212,37 +204,44 @@ export const sendEmailOtp = async (req, res) => {
         break;
     }
 
+
     const otp = Math.floor(100000 + Math.random() * 900000);
 
-    await prisma.$transaction(async (tx) => {
-      const existingOtp = await tx.email_otps.findFirst({
-        where: { user_id },
-      });
-
-      if (existingOtp) {
-        await tx.email_otps.update({
-          where: { email: existingOtp.email },   // ← FIXED
-          data: {
-            otp,
-            expires_at: dayjs().add(5, "minute").toISOString(),
-          },
-        });
-      } else {
-        await tx.email_otps.create({
-          data: {
-            user_id,
-            email,
-            otp,
-            expires_at: dayjs().add(5, "minute").toISOString(),
-          },
-        });
-      }
+    await prisma.email_otps.upsert({
+      where: { email: user.email }, // unique key
+      update: {
+        otp,
+        expires_at: dayjs().add(5, "minute").toDate(),
+        updated_at: new Date(),
+      },
+      create: {
+        user_id: BigInt(user.user_id),
+        email: user.email,
+        otp,
+        expires_at: dayjs().add(5, "minute").toDate(),
+        created_at: new Date(),
+      },
     });
 
-    await transporter.sendMail({
+    console.log(`OTP generated and saved for ${user.email}: ${otp}`);
+
+
+    await sgMail.send({
       to: email,
+      from: {
+        email: process.env.MAIL_FROM_ADDRESS,
+        name: "OnnBit Team",
+      },
       subject: customSubject,
-      text: `Hello ${user.name},\n\n${customMessage}🔐 OTP: ${otp}\n\nThis OTP expires in 5 minutes.\n\nThank you,\nOnnBit Team`,
+      text: `Hello ${user.name},
+
+${customMessage}
+🔐 OTP: ${otp}
+
+This OTP expires in 5 minutes.
+
+Thank you,
+OnnBit Team`,
     });
 
     return res.status(200).json({

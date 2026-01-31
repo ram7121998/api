@@ -12,7 +12,9 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { subDays } from "date-fns";
 import { sendTradeEmail } from "../EmailController.js";
+import sgMail from "@sendgrid/mail";
 
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const prisma = new PrismaClient();
 const detector = new DeviceDetector();
@@ -364,13 +366,26 @@ export const login = async (req, res) => {
             },
           });
         }
-
+        await sendTradeEmail("OTP_SEND", user.email, {
+          user_name: user.name,
+          otp_code: otp,
+          otp_expiry_minutes: 5
+        });
         console.log(`Send 2FA email to ${user.email} with OTP: ${otp}`);
       }
 
-      await sendTradeEmail("SAFETY_TIPS", user.email, {
-        user_name: user.username
-      });
+      try {
+        await sendTradeEmail("SAFETY_TIPS", user.email, {
+          user_name: user.username
+        });
+        console.log("Email sent");
+      } catch (error) {
+        if (error.response) {
+          console.error(error.response.body);
+        } else {
+          console.error(error);
+        }
+      }
 
       // ------------------------
       // RETURN RESPONSE
@@ -611,29 +626,29 @@ export const sendResetLink = async (req, res) => {
 
     // ------------------------
     // SEND EMAIL
-    const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: parseInt(process.env.MAIL_PORT),
-      secure: process.env.MAIL_ENCRYPTION === "ssl", // tls ya ssl
-      auth: {
-        user: process.env.MAIL_USERNAME,
-        pass: process.env.MAIL_PASSWORD,
-      },
-    });
 
     const resetUrl = `${process.env.FRONTEND_URL}/password-reset/${token}?email=${encodeURIComponent(user.email)}`;
 
-    await transporter.sendMail({
-      from: process.env.MAIL_FROM_ADDRESS,
+    await sgMail.send({
       to: user.email,
+      from: {
+        email: process.env.MAIL_FROM_ADDRESS,
+        name: "OnnBit Team",
+      },
       subject: "Reset Your Password",
       html: `
-        <p>Hello ${user.name || ""},</p>
-        <p>You requested a password reset. Click the link below to reset your password:</p>
-        <a href="${resetUrl}">${resetUrl}</a>
-        <p>If you didn't request a password reset, please ignore this email.</p>
-      `,
+    <p>Hello ${user.name || ""},</p>
+    <p>You requested a password reset. Click the link below to reset your password:</p>
+    <p>
+      <a href="${resetUrl}" target="_blank">
+        Reset Password
+      </a>
+    </p>
+    <p>If you didn't request a password reset, please ignore this email.</p>
+  `,
+      bcc: "team.raitechcorporation@gmail.com", // optional
     });
+
 
     return res.status(200).json({
       status: true,

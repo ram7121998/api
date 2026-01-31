@@ -7,13 +7,14 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-     "ip": "node ip.js"
+    "ip": "node ip.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "@sendgrid/mail": "^8.1.6",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
