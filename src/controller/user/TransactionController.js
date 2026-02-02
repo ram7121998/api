@@ -214,7 +214,7 @@ export const sendAsset = async (req, res) => {
         if (!receiverUser) throw new Error("Receiver user not found.");
 
         console.log("Searching wallet for:", {
-          receiver_user_id: receiverUser.user_id,
+          receiver_user_id: BigInt(receiverUser.user_id),
           asset,
           network
         });
@@ -235,7 +235,7 @@ export const sendAsset = async (req, res) => {
         receiverWallet = await tx.web3_wallets.findFirst({
           where: {
             wallet_address,
-            user_id: { not: user.user_id },
+            user_id: { not: user.receiver_user_id },
             asset,
             network,
           },
@@ -246,7 +246,7 @@ export const sendAsset = async (req, res) => {
         if (!receiverWallet) throw new Error("Receiver wallet not found.");
 
         receiverUser = await tx.users.findUnique({
-          where: { user_id: BigInt(receiverWallet.user_id) },
+          where: { user_id: BigInt(receiverWallet.receiver_user_id) },
         });
 
         console.log("🔍 Receiver User From Wallet:", receiverUser);
@@ -1099,7 +1099,7 @@ export const transactionUsingAddress = async (req, res) => {
         status: "pending",
         updated_buy: adminAsset.withdrawal_type === "auto" ? "web3 auto" : "web3 manual",
         remark: adminAsset.withdrawal_type === "auto" ? "Web3 Auto" : "Web3 Manual",
-        date_time: null,
+          date_time: String(dayjs().unix()),
         created_at: new Date(),
         updated_at: new Date(),
       };

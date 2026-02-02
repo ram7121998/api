@@ -27,7 +27,6 @@ export const authenticateAdmin = async (req, res, next) => {
         token: token,
       },
     });
-    console.log(currentToken)
 
     if (!currentToken) {
       return res.status(401).json({ status: false, message: "admin is not authenticated" });
@@ -97,7 +96,6 @@ export const authenticateUser = async (req, res, next) => {
         token: token, // JWT from request
       },
     });
-console.log("currentToken",currentToken)
     if (!currentToken) {
       return res.status(401).json({ status: false, message: "User is not authenticated" });
     }
@@ -105,7 +103,6 @@ console.log("currentToken",currentToken)
     const loginDetail = await prisma.user_login_details.findFirst({
       where: { user_id: BigInt(decoded.userId), token_id: currentToken.id.toString()},
     });
-console.log("loginDetail",loginDetail)
 
     // if (!loginDetail) {
     //   return res.status(401).json({ status: false, message: "User is not authenticated" });

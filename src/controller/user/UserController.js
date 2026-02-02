@@ -167,97 +167,84 @@ export const getReferralLink = async (req, res) => {
 
 
 export const loginHistory = async (req, res) => {
-  try {
-    const userId = req.user?.user_id;
-
-    if (!userId) {
-      return res.status(401).json({
-        status: false,
-        message: "User not found.",
-      });
-    }
-
-    // Fetch user
-    const user = await prisma.users.findUnique({
-      where: { user_id: BigInt(userId) },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        status: false,
-        message: "User not found.",
-      });
-    }
-
-    // Fetch login history
-    const loginDetails = await prisma.user_login_details.findMany({
-      where: { user_id: BigInt(userId) },
-      orderBy: { logged_in_at: "desc" },
-    });
-
-    if (!loginDetails || loginDetails.length === 0) {
-      return res.status(404).json({
-        status: false,
-        message: "User's login history were not found.",
-      });
-    }
-
-    const timezone = user.preferred_timezone || "Asia/Kolkata";
-
-    const requiredData = await Promise.all(
-      loginDetails.map(async (loginHistory) => {
-        const loginAt = moment(loginHistory.logged_in_at)
-          .tz(timezone)
-          .format("YYYY-MM-DD hh:mm A");
-
-        const loginDuration = moment(loginHistory.logged_in_at)
-          .tz(timezone)
-          .fromNow();
-
-        // Get location from IP
-        let countryData = {};
-        try {
-          const response = await axios.get(
-            `http://ip-api.com/json/${loginHistory.ip_address}`
-          );
-          countryData = response.data || {};
-        } catch (err) {
-          countryData = {};
+    try {
+        const userId = req.user?.user_id;
+        if (!userId) {
+            return res.status(401).json({
+                status: false,
+                message: "User not found.",
+            });
         }
-
-        // Check if this session/token is current
-        const isCurrent = loginHistory.token_id === req.user?.token_id;
-
-        return {
-          loginDetailsId: loginHistory.login_details_id.toString(),
-          ipAddress: loginHistory.ip_address,
-          deviceDetails: loginHistory.device_details,
-          device: loginHistory.device,
-          browser: loginHistory.browser,
-          os: loginHistory.os,
-          osVersion: loginHistory.os_version,
-          loginStatus: loginHistory.login_status,
-          loginAt,
-          loginDuration,
-          countryName: countryData.country || "N/A",
-          countryCity: countryData.city || "N/A",
-          current: isCurrent,
-        };
-      })
-    );
-
-    return res.status(200).json({
-      status: true,
-      message: "Login Details found successfully.",
-      data: requiredData,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      status: false,
-      message: "Something went wrong",
-      errors: error.message,
-    });
-  }
+        // Fetch user
+        const user = await prisma.users.findUnique({
+            where: { user_id: BigInt(userId) },
+        });
+        if (!user) {
+            return res.status(404).json({
+                status: false,
+                message: "User not found.",
+            });
+        }
+        // Fetch login history
+        const loginDetails = await prisma.user_login_details.findMany({
+            where: { user_id: BigInt(userId) },
+            orderBy: { logged_in_at: "desc" },
+        });
+        if (!loginDetails || loginDetails.length === 0) {
+            return res.status(404).json({
+                status: false,
+                message: "User's login history were not found.",
+            });
+        }
+        const timezone = user.preferred_timezone || "Asia/Kolkata";
+        const requiredData = await Promise.all(loginDetails.map(async (loginHistory) => {
+            const loginAt = moment(loginHistory.logged_in_at)
+                .tz(timezone)
+                .format("YYYY-MM-DD hh:mm A");
+            const loginDuration = moment(loginHistory.logged_in_at)
+                .tz(timezone)
+                .fromNow();
+            // Get location from IP
+            let countryData = {};
+            try {
+                const response = await axios.get(`http://ip-api.com/json/${loginHistory.ip_address}`);
+                console.log("ip-api response", response.data);
+                countryData = response.data || {};
+            }
+            catch (err) {
+                countryData = {};
+            }
+            // Check if this session/token is current
+            const isCurrent = loginHistory.token_id === req.user?.token_id;
+            return {
+                loginDetailsId: loginHistory.login_details_id.toString(),
+                ipAddress: loginHistory.ip_address,
+                deviceDetails: loginHistory.device_details,
+                device: loginHistory.device,
+                browser: loginHistory.browser,
+                os: loginHistory.os,
+                osVersion: loginHistory.os_version,
+                loginStatus: loginHistory.login_status,
+                loginAt,
+                loginDuration,
+                countryName: countryData.country || "N/A",
+                countryCity: countryData.city || "N/A",
+                current: isCurrent,
+            };
+        }));
+        return res.status(200).json({
+            status: true,
+            message: "Login Details found successfully.",
+            data: requiredData,
+        });
+    }
+    catch (error) {
+        return res.status(500).json({
+            status: false,
+            message: "Something went wrong",
+            errors: error.message,
+        });
+    }
 };
 
 

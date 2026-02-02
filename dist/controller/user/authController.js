@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import DeviceDetector from "node-device-detector";
+import DeviceDetector from "device-detector-js";
 import { validationResult } from "express-validator";
 import { body } from "express-validator";
 import moment from "moment";
@@ -219,8 +219,10 @@ export const login = async (req, res) => {
                 req.headers["cf-connecting-ip"] ||
                 req.headers["x-real-ip"] ||
                 req.ip;
-            const detector = new DeviceDetector();
-            const device = detector.parseOs(req.headers["user-agent"]);
+const detector = new DeviceDetector();
+const userAgent = req.headers["user-agent"] || "";
+const device = detector.parse(userAgent);
+
             // ------------------------
             // UPDATE USER LOGIN INFO
             // ------------------------
@@ -248,13 +250,14 @@ export const login = async (req, res) => {
             // ------------------------
             // STORE LOGIN DETAILS
             // ------------------------
-            const deviceData = {
-                clientInfo: device.client || {},
-                osInfo: device.os || {},
-                device: device.device?.type || null,
-                brand: device.device?.brand || null,
-                model: device.device?.model || null,
-            };
+         const deviceData = {
+  clientInfo: device.client || {},       // Browser
+  osInfo: device.os || {},               // OS
+  device: device.device?.type || "desktop",
+  brand: device.device?.brand || null,
+  model: device.device?.model || null,
+};
+
             const tokenIds = await prisma.personal_access_tokens.create({
                 data: {
                     tokenable_type: "users", // table name ya model
@@ -265,21 +268,21 @@ export const login = async (req, res) => {
                     created_at: new Date(),
                 },
             });
-            const login = await prisma.user_login_details.create({
-                data: {
-                    user_id: BigInt(user.user_id),
-                    token_id: tokenIds.id.toString(),
-                    ip_address: ipAddress,
-                    device_details: JSON.stringify(deviceData),
-                    device: deviceData.device,
-                    browser: deviceData.clientInfo?.name || null,
-                    os: deviceData.osInfo?.name || null,
-                    os_version: deviceData.osInfo?.version || null,
-                    login_status: "login",
-                    logged_in_at: new Date(),
-                },
-            });
-            console.log("login", login);
+          const login = await prisma.user_login_details.create({
+  data: {
+    user_id: BigInt(user.user_id),
+    token_id: tokenIds.id.toString(),
+    ip_address: ipAddress === "::1" ? "127.0.0.1" : ipAddress,
+    device_details: JSON.stringify(deviceData),
+    device: deviceData.device,
+    browser: device.client?.name || null,
+    os: device.os?.name || null,
+    os_version: device.os?.version || null,
+    login_status: "login",
+    logged_in_at: new Date(),
+  },
+});
+
             // ------------------------
             // KEEP LAST 10 LOGIN RECORDS
             // ------------------------
@@ -626,7 +629,6 @@ export const resetPassword = async (req, res) => {
         }
         // ------------------------
         // TOKEN MATCH CHECK
-        console.log(tokenData.token);
         if (token !== tokenData.token) {
             return res.status(400).json({
                 status: "failed",
@@ -683,7 +685,6 @@ export const passwordVerification = async (req, res) => {
     }
     try {
         const { password } = req.body;
-        console.log("Received password:", password);
         // -------------------
         // VALIDATION
         if (!password || typeof password !== "string") {

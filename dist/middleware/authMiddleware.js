@@ -24,7 +24,6 @@ export const authenticateAdmin = async (req, res, next) => {
                 token: token,
             },
         });
-        console.log(currentToken);
         if (!currentToken) {
             return res.status(401).json({ status: false, message: "admin is not authenticated" });
         }
