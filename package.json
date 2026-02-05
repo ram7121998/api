@@ -18,11 +18,14 @@
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
+    "bitcoinjs-lib": "^7.0.1",
     "cors": "^2.8.5",
     "date-fns-tz": "^3.2.0",
     "dayjs": "^1.11.19",
     "device-detector-js": "^3.0.3",
     "dotenv": "^17.2.3",
+    "ecpair": "^3.0.0",
+    "ethers": "^6.16.0",
     "express": "^5.1.0",
     "express-validator": "^7.3.0",
     "jsonwebtoken": "^9.0.2",
@@ -41,8 +44,11 @@
     "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "tiny-secp256k1": "^2.2.4",
+    "tronweb": "^6.1.1",
     "ua-parser-js": "^2.0.6",
     "user-agents": "^1.1.669",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "web3": "^4.16.0"
   }
 }

@@ -43,7 +43,7 @@ export const authenticateAdmin = async (req, res, next) => {
         profile_image: true,
         user_status: true,
         created_at: true,
-permissions: true 
+        permissions: true
       }
     });
 
@@ -60,7 +60,7 @@ permissions: true
       admin_id: decoded.adminId,
       role: admins.role,
       token: token,
-permissions: admins.permissions 
+      permissions: admins.permissions
     };
 
     next();
@@ -101,7 +101,7 @@ export const authenticateUser = async (req, res, next) => {
     }
 
     const loginDetail = await prisma.user_login_details.findFirst({
-      where: { user_id: BigInt(decoded.userId), token_id: currentToken.id.toString()},
+      where: { user_id: BigInt(decoded.userId), token_id: currentToken.id.toString() },
     });
 
     // if (!loginDetail) {

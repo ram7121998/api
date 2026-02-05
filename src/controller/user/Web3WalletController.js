@@ -3,138 +3,131 @@ import moment from "moment";
 import { decryptWithKey, encryptWithKey } from "../../config/EncryptDecrypt.js";
 import prisma from "../../config/prismaClient.js";
 import { cryptoAsset, getBTCEquivalent } from "../../config/ReusableCode.js";
+import { ethers } from 'ethers';
+import * as bitcoin from 'bitcoinjs-lib';
+import TronWeb from 'tronweb';
+import * as ecc from 'tiny-secp256k1';
+import ECPairFactory from 'ecpair';
 
-
+bitcoin.initEccLib(ecc);
+const ECPair = ECPairFactory(ecc);
 export const createWeb3Wallet = async (req, res) => {
-    const user = req.user; // assume user is set in middleware after authentication
+    const user = req.user;
+
     try {
         const { blockchain, network, asset } = req.body;
 
-        // Validation
+        // ---------------- VALIDATION ----------------
         const allowedBlockchains = ['ethereum', 'binance', 'bitcoin', 'tron'];
         const allowedNetworks = ['erc20', 'bep20', 'btc', 'trc20'];
         const allowedAssets = ['eth', 'bnb', 'usdt', 'btc'];
 
-        if (!allowedBlockchains.includes(blockchain) ||
+        if (
+            !allowedBlockchains.includes(blockchain) ||
             !allowedNetworks.includes(network) ||
-            !allowedAssets.includes(asset)) {
+            !allowedAssets.includes(asset)
+        ) {
             return res.status(422).json({
                 status: false,
-                message: 'Invalid blockchain, network, or asset.'
+                message: 'Invalid blockchain, network, or asset'
             });
         }
 
-        // Check valid combinations
         const validCombinations = [
-            { blockchain: 'ethereum', network: 'erc20', assets: ['eth', 'usdt'] },
-            { blockchain: 'binance', network: 'bep20', assets: ['bnb'] },
-            { blockchain: 'tron', network: 'trc20', assets: ['usdt'] },
-            { blockchain: 'bitcoin', network: 'btc', assets: ['btc'] },
+            { blockchain: 'ethereum', network: 'erc20', asset: ['eth', 'usdt'] },
+            { blockchain: 'binance', network: 'bep20', asset: ['bnb'] },
+            { blockchain: 'tron', network: 'trc20', asset: ['usdt'] },
+            { blockchain: 'bitcoin', network: 'btc', asset: ['btc'] }
         ];
 
-        const isValidCombo = validCombinations.some(
-            c => c.blockchain === blockchain && c.network === network && c.assets.includes(asset)
+        const isValid = validCombinations.some(
+            v => v.blockchain === blockchain &&
+                 v.network === network &&
+                 v.asset.includes(asset)
         );
 
-        if (!isValidCombo) {
+        if (!isValid) {
             return res.status(422).json({
                 status: false,
-                message: 'Invalid blockchain and network combination for the selected asset.'
+                message: 'Invalid blockchain + network + asset combination'
             });
         }
 
-        // Transaction start
+        // ------------- EXISTING WALLET CHECK -------------
         const existingWallet = await prisma.web3_wallets.findFirst({
             where: {
-                user_id: user.user_id,
+                user_id: BigInt(user.user_id),
                 blockchain,
                 network,
                 asset
             }
         });
 
-        if (existingWallet && existingWallet.wallet_address && existingWallet.wallet_key) {
+        if (existingWallet?.wallet_address && existingWallet?.wallet_key) {
             return res.status(409).json({
                 status: false,
-                message: 'Web3 Wallet already created for this blockchain, network, and asset.'
-            });
-        }
-
-        let walletId;
-
-        if (existingWallet) {
-            walletId = existingWallet.wallet_id;
-        } else {
-            // For ETH, BNB, USDT reuse existing wallet address if available
-            if (['eth', 'bnb', 'usdt'].includes(asset) && (asset !== 'usdt' || blockchain === 'ethereum')) {
-                const checkWallet = await prisma.web3_wallets.findFirst({
-                    where: {
-                        user_id: user.user_id,
-                        asset: { in: ['eth', 'bnb', 'usdt'] },
-                        NOT: asset === 'usdt' ? { blockchain: 'tron' } : undefined,
-                    }
-                });
-
-                if (checkWallet) {
-                    await prisma.web3_wallets.create({
-                        data: {
-                            user_id: BigInt(user.user_id),
-                            blockchain,
-                            network,
-                            asset,
-                            wallet_address: checkWallet.wallet_address,
-                            wallet_key: checkWallet.wallet_key,
-                            created_at: new Date(),
-                            updated_at: new Date()
-                        }
-                    });
-
-                    return res.status(201).json({
-                        status: true,
-                        message: 'Web3 Wallet account created successfully.',
-                        walletAddressUpdate: true,
-                    });
-                }
-            }
-
-            const walletData = await prisma.web3_wallets.create({
+                message: 'Wallet already exists',
                 data: {
-                    user_id: BigInt(user.user_id),  // MUST be defined
-                    blockchain,
-                    network,
-                    asset,
-                    created_at: new Date()
+                    wallet_address: existingWallet.wallet_address
                 }
             });
-            walletId = walletData.wallet_id;
         }
-        // Encrypt key/phrase from settings
+
+        // ------------- WALLET GENERATION -------------
+        let wallet;
+
+        if (blockchain === 'ethereum' || blockchain === 'binance') {
+            wallet = generateEthBscWallet();
+        } 
+        else if (blockchain === 'bitcoin') {
+            wallet = generateBtcWallet();
+        } 
+        else if (blockchain === 'tron') {
+            wallet = await generateTronWallet();
+        }
+
+        // ------------- SAVE WALLET -------------
+        const savedWallet = await prisma.web3_wallets.create({
+            data: {
+                user_id: BigInt(user.user_id),
+                blockchain,
+                network,
+                asset,
+                wallet_address: wallet.address,
+                wallet_key: wallet.privateKey,
+                created_at: new Date(),
+                updated_at: new Date()
+            }
+        });
+
+        // ------------- ENCRYPT PHRASE -------------
         const settingData = await prisma.settings.findUnique({
             where: { setting_id: BigInt(1) }
         });
 
-        const data = {
+        const encryptPayload = {
             key: settingData?.wallet_key,
             phrase: settingData?.wallet_key_phrase
         };
 
-        const phrase = encryptWithKey(data, user.id);
+        const phrase = encryptWithKey(encryptPayload, user.user_id);
 
         return res.status(201).json({
             status: true,
-            message: 'Web3 Wallet account created successfully.',
-            walletAddressUpdate: false,
+            message: 'Web3 wallet created successfully',
             data: {
-                phrase,
-                wallet_id: walletId
+                wallet_id: savedWallet.wallet_id,
+                wallet_address: savedWallet.wallet_address,
+                phrase
             }
         });
 
     } catch (error) {
+        console.error(error);
         return res.status(500).json({
             status: false,
-            message: 'Unable to create web3 wallet account',
-            errors: error.message
+            message: 'Unable to create web3 wallet',
+            error: error.message
         });
     }
 };
@@ -404,4 +397,42 @@ export const updateWeb3Wallet = async (req, res) => {
             errors: error.message
         });
     }
+};
+
+// ETH / BSC Wallet
+const generateEthBscWallet = () => {
+    const wallet = ethers.Wallet.createRandom();
+    return {
+        address: wallet.address,       // 0x...
+        privateKey: wallet.privateKey  // 0x...
+    };
+};
+
+// Bitcoin Wallet (Native SegWit)
+const generateBtcWallet = () => {
+    const keyPair = ECPair.makeRandom({ network: bitcoin.networks.bitcoin });
+
+    const { address } = bitcoin.payments.p2wpkh({
+        pubkey: keyPair.publicKey,
+        network: bitcoin.networks.bitcoin,
+    });
+
+    return {
+        address,                                   // bc1...
+        privateKey: keyPair.toWIF()                // WIF format
+    };
+};
+
+// Tron Wallet (USDT TRC20)
+const generateTronWallet = async () => {
+    const tronWeb = new TronWeb({
+        fullHost: 'https://api.trongrid.io'
+    });
+
+    const wallet = await tronWeb.createAccount();
+
+    return {
+        address: wallet.address.base58,   // T...
+        privateKey: wallet.privateKey
+    };
 };

@@ -1,3 +1,4 @@
+import moment from "moment";
 import { convertBigIntToString } from "../../config/convertBigIntToString.js";
 import prisma from "../../config/prismaClient.js";
 import { getCryptoLogo } from "../../config/ReusableCode.js";
@@ -131,7 +132,6 @@ export const getMyCryptoAd = async (req, res) => {
 
 export const createCryptoAd = async (req, res) => {
     let user = req.user; // user from middleware
-    console.log(req.body.price_type)
     try {
         if (!user) {
             return res.status(401).json({
@@ -265,7 +265,6 @@ export const createCryptoAd = async (req, res) => {
             });
 
         // This will run now
-        console.log("result: crypto ad created");
 
         return res.status(201).json({
             status: true,
@@ -295,6 +294,7 @@ export const getCryptoAd = async (req, res) => {
             activeTrader,
             user_id,
             maxAmount,
+            verified
         } = req.query;
 
         const perPage = Number(req.query.per_page) || 10;
@@ -306,6 +306,11 @@ export const getCryptoAd = async (req, res) => {
             is_active: true,
             remaining_trade_limit: { gt: 0 },
         };
+        // ✅ VERIFIED OFFERS FILTER
+        if (verified === "true") {
+            filters.require_verification = true;
+        }
+
 
         // ad_id filter
         if (ad_id) filters.crypto_ad_id = BigInt(ad_id);
@@ -360,6 +365,22 @@ export const getCryptoAd = async (req, res) => {
         //     user: ad.user ? userDetails(ad.user, false) : null,
         // }));
 
+        let favorites = [];
+        const loggedInUserId = user ? BigInt(user.user_id) : null;
+        if (loggedInUserId) {
+            favorites = await prisma.favorite_offers.findMany({
+                where: {
+                    user_id: loggedInUserId,
+                },
+            });
+
+        }
+
+        const favoriteSet = new Set(
+            favorites.map(f => f.crypto_ad_id.toString())
+        );
+
+
         const feedbacks = await prisma.feedback.findMany({
         });
 
@@ -379,6 +400,9 @@ export const getCryptoAd = async (req, res) => {
 
             return {
                 ...ad,
+                is_favorite: loggedInUserId
+                    ? favoriteSet.has(ad.crypto_ad_id.toString())
+                    : false,
                 offer_tags: (() => {
                     try {
                         return typeof ad.offer_tags === "string"
@@ -939,7 +963,7 @@ export function userDetails(user) {
         last_seen_at: user.last_seen_at,
         last_login_duration: user.last_login_duration,
         user_status: user.user_status,
-        display_name_preference:user.display_name_preference
+        display_name_preference: user.display_name_preference
     };
 }
 

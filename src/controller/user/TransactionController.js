@@ -1185,12 +1185,23 @@ export const feeCalculation = async (req, res) => {
         errors: { network: "Invalid network" },
       });
 
-    if (!assetValue || isNaN(assetValue) || Number(assetValue) < 0.000006)
-      return res.status(422).json({
-        status: false,
-        message: "Validation failed",
-        errors: { assetValue: "Invalid asset value" },
-      });
+const value = Number(assetValue);
+
+if (
+  assetValue === undefined ||
+  assetValue === null ||
+  isNaN(value) ||
+  value <= 0 ||
+  value < 0.000006
+) {
+  return res.status(422).json({
+    status: false,
+    message: "Validation failed",
+    errors: {
+      assetValue: "Asset value must be at least 0.000006",
+    },
+  });
+}
 
     // ================================
     // FETCH ADMIN ASSET DETAILS

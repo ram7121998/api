@@ -23,6 +23,7 @@ import { ensureEmailVerified } from "../middleware/ensureEmailVerified.js";
 import { sendOtp } from "../controller/user/SandboxController.js";
 import { createFeedback, getFeedback, giveCryptoFeedback } from "../controller/user/FeedbackController.js";
 import { getCountries, getCountriesCurrency, getCountriesDialingCode, getTimezone } from "../controller/CountryController.js";
+import { sendBnb, sendBtc, sendEth, sendUsdt } from "../controller/user/sendEth.js";
 const router = express.Router();
 router.post("/auth/register", formData, register);
 router.post("/auth/login", formData, login);
@@ -79,6 +80,36 @@ router.post("/support-tickets/reply-support-ticket", authenticateUser, checkUser
 router.post("/support-tickets/close-ticket", formData, authenticateUser, checkUserStatus, closeTicket);
 router.get("/transaction/get-transaction", authenticateUser, checkUserStatus, getTransactionDetails);
 router.post("/transaction/send-asset", formData, authenticateUser, checkUserStatus, sendAsset);
+router.post("/send-crypto", authenticateUser, async (req, res) => {
+  try {
+    const { asset, toAddress, amount } = req.body;
+    if (!asset || !toAddress || !amount)
+      return res.status(400).json({ status: false, message: "Missing parameters" });
+
+    let txHash;
+    switch (asset.toLowerCase()) {
+      case "eth":
+        txHash = await sendEth(toAddress, amount);
+        break;
+      case "bnb":
+        txHash = await sendBnb(toAddress, amount);
+        break;
+      case "usdt":
+        txHash = await sendUsdt(toAddress, amount);
+        break;
+      case "btc":
+        txHash = await sendBtc(toAddress, amount);
+        break;
+      default:
+        return res.status(400).json({ status: false, message: "Unsupported asset" });
+    }
+
+    return res.json({ status: true, message: "Transaction successful", transactionHash: txHash });
+  } catch (err) {
+    console.error("Transaction Error:", err);
+    return res.status(500).json({ status: false, message: err.message });
+  }
+});
 router.post("/web3-wallet/create-web3-wallet", formData, authenticateUser, checkUserStatus, createWeb3Wallet);
 router.get("/web3-wallet/get-walletKeyPhrase", authenticateUser, checkUserStatus, getWalletKeyPhrase);
 router.post("/web3-wallet/decrypt-data", formData, authenticateUser, checkUserStatus, decryptedData);

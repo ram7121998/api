@@ -257,6 +257,7 @@ const device = detector.parse(userAgent);
                 data: {
                     login_with: field === "email" ? "email" : "phone",
                     login_status: "login",
+                    last_seen: new Date(),
                     login_count: user.login_count + 1,
                     last_login: new Date(),
                     logged_in_device: req.headers["user-agent"],
