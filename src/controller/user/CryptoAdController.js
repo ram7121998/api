@@ -30,6 +30,7 @@ export const getMyCryptoAd = async (req, res) => {
             user_id: BigInt(user.user_id),
         };
 
+
         if (txn_type) filters.transaction_type = txn_type.toLowerCase();
         if (is_active) filters.is_active = is_active === "true";
         if (cryptocurrency) filters.cryptocurrency = cryptocurrency.toLowerCase();
@@ -46,6 +47,9 @@ export const getMyCryptoAd = async (req, res) => {
             orderBy: { crypto_ad_id: "desc" },
             skip,
             take: per_page,
+            include: {
+                user: true,   // 👈 YEH IMPORTANT
+            },
         });
 
         // Add parsed offer_tags + logo
@@ -70,6 +74,20 @@ export const getMyCryptoAd = async (req, res) => {
                 transaction_type: "sell"
             }
         });
+        let favorites = [];
+        const loggedInUserId = user ? BigInt(user.user_id) : null;
+        if (loggedInUserId) {
+            favorites = await prisma.favorite_offers.findMany({
+                where: {
+                    user_id: loggedInUserId,
+                },
+            });
+
+        }
+
+        const favoriteSet = new Set(
+            favorites.map(f => f.crypto_ad_id.toString())
+        );
 
         const totalUserBuyAds = await prisma.crypto_ads.count({
             where: {
@@ -101,8 +119,32 @@ export const getMyCryptoAd = async (req, res) => {
             links: [],
             path: `${req.protocol}://${req.get("host")}${req.path}`,
         };
+        const feedbacks = await prisma.feedback.findMany({
+        });
+        const ads = updatedAds.map(ad => {
 
-        const safeData = convertBigIntToString(updatedAds);
+            // is user ke saare feedback
+            const userFeedbacks = feedbacks.filter(
+                f => f.user_id === BigInt(ad.user.user_id)
+            );
+
+            const totalLikes = userFeedbacks.filter(f => f.like === true).length;
+            const totalDislikes = userFeedbacks.filter(f => f.dislike === true).length;
+
+            return {
+                ...ad,
+                is_favorite: loggedInUserId
+                    ? favoriteSet.has(ad.crypto_ad_id.toString())
+                    : false,
+                user: {
+                    ...userDetails(ad.user, false),
+                    total_likes: totalLikes,
+                    total_dislikes: totalDislikes,
+                },
+            };
+        });
+
+        const safeData = convertBigIntToString(ads);
 
         return res.status(200).json({
             status: true,
@@ -384,6 +426,21 @@ export const getCryptoAd = async (req, res) => {
         const feedbacks = await prisma.feedback.findMany({
         });
 
+        const totalBuyAds = await prisma.crypto_ads.count({
+            where: {
+                ...filters,
+                transaction_type: "buy",
+            },
+        });
+
+        const totalSellAds = await prisma.crypto_ads.count({
+            where: {
+                ...filters,
+                transaction_type: "sell",
+            },
+        });
+
+
         ads = ads.map(ad => {
             const adFeedbacks = feedbacks.filter(
                 f => f.user_id === ad.user_id
@@ -440,8 +497,11 @@ export const getCryptoAd = async (req, res) => {
                 next_page_url: page < Math.ceil(totalAds / perPage) ? `?page=${page + 1}` : null,
                 prev_page_url: page > 1 ? `?page=${page - 1}` : null,
             },
-            analytics: totalCount(user_id ?? null, totalAds),
-            logo: logo(),
+            analytics: {
+                totalAds: totalAds,
+                totalBuyAds,
+                totalSellAds,
+            }, logo: logo(),
         });
 
     } catch (err) {
@@ -839,7 +899,9 @@ export const getFavoriteCryptoOffer = async (req, res) => {
     try {
         const user = req.user;
         const perPage = Number(req.query.per_page) || 10;
-        const trade_type = req.query.trade_type;
+        const trade_type = req.query.txn_type;
+        const cryptocurrency = req.query.cryptocurrency;
+
 
         // Validate trade_type
         if (trade_type && !["buy", "sell"].includes(trade_type)) {
@@ -852,8 +914,34 @@ export const getFavoriteCryptoOffer = async (req, res) => {
         // RELATION FILTER
         const baseWhere = {
             user_id: BigInt(user.user_id),
-            ...(trade_type ? { crypto_ad: { transaction_type: trade_type } } : {})
+            ...(trade_type || cryptocurrency
+                ? {
+                    crypto_ad: {
+                        ...(trade_type && {
+                            transaction_type: trade_type.toLowerCase(),
+                        }),
+                        ...(cryptocurrency && {
+                            cryptocurrency: cryptocurrency.toLowerCase(),
+                        }),
+                    },
+                }
+                : {}),
         };
+        let favorites = [];
+        const loggedInUserId = user ? BigInt(user.user_id) : null;
+        if (loggedInUserId) {
+            favorites = await prisma.favorite_offers.findMany({
+                where: {
+                    user_id: loggedInUserId,
+                },
+            });
+
+        }
+
+        const favoriteSet = new Set(
+            favorites.map(f => f.crypto_ad_id.toString())
+        );
+
 
         // Analytics
         const [totalFavoriteOffer, totalBuyFavoriteOffer, totalSellFavoriteOffer] = await Promise.all([
@@ -877,7 +965,8 @@ export const getFavoriteCryptoOffer = async (req, res) => {
         // Pagination
         const page = Number(req.query.page) || 1;
         const skip = (page - 1) * perPage;
-
+        const feedbacks = await prisma.feedback.findMany({
+        });
         const [favoriteOffers, totalOffers] = await Promise.all([
             prisma.favorite_offers.findMany({
                 where: baseWhere,
@@ -885,14 +974,49 @@ export const getFavoriteCryptoOffer = async (req, res) => {
                 skip,
                 take: perPage,
                 include: {
-                    crypto_ad: true
+                    crypto_ad: {
+                        include: {
+                            user: true
+                        }
+                    }
                 }
             }),
 
             prisma.favorite_offers.count({ where: baseWhere })
         ]);
 
+        console.log("Favorite Offers:", favoriteOffers);
+
         const lastPage = Math.ceil(totalOffers / perPage);
+        const formattedFavoriteOffers = favoriteOffers.map((fav) => {
+            const ad = fav.crypto_ad;
+
+
+            const adFeedbacks = feedbacks.filter(
+                f => f.user_id === ad.user_id
+            );
+
+            const totalLikes = adFeedbacks.filter(f => f.like).length;
+            const totalDislikes = adFeedbacks.filter(f => f.dislike).length;
+
+            return {
+                ...fav,
+                crypto_ad: {
+                    ...ad,
+                    is_favorite: loggedInUserId
+                        ? favoriteSet.has(ad.crypto_ad_id.toString())
+                        : false,
+                    user: ad.user
+                        ? {
+                            ...userDetails(ad.user, false),
+                            total_likes: totalLikes,
+                            total_dislikes: totalDislikes
+                        }
+                        : null
+                }
+            };
+        });
+
 
         const pagination = {
             current_page: page,
@@ -911,7 +1035,7 @@ export const getFavoriteCryptoOffer = async (req, res) => {
         return res.json({
             status: true,
             message: "Favorite crypto offers retrieved successfully.",
-            favorite_offers: favoriteOffers,
+            favorite_offers: formattedFavoriteOffers,
             pagination,
             analytics: {
                 totalFavoriteOffer,

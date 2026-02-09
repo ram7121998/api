@@ -353,14 +353,26 @@ const device = detector.parse(userAgent);
                 console.log(`Send 2FA email to ${user.email} with OTP: ${otp}`);
             }
 
-            await sendTradeEmail("OTP_SEND", user.email, {
-                user_name: user.name,
-                otp_code: otp,
-                otp_expiry_minutes: 5
-            });
-            await sendTradeEmail("SAFETY_TIPS", user.email, {
-                user_name: user.username
-            });
+       try {
+    if (user.two_factor_auth) {
+        await sendTradeEmail("OTP_SEND", user.email, {
+            user_name: user.name,
+            otp_code: otp,
+            otp_expiry_minutes: 5
+        });
+    }
+
+    await sendTradeEmail("SAFETY_TIPS", user.email, {
+        user_name: user.username
+    });
+
+} catch (emailError) {
+    console.error(
+        "Email failed but login continued:",
+        emailError?.response?.body || emailError.message
+    );
+}
+
 
             // ------------------------
             // RETURN RESPONSE
