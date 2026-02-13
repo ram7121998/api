@@ -187,217 +187,217 @@ export const register = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-    const { username, password } = req.body;
-    console.log("Login attempt:", { username ,password});
-    try {
-        // ------------------------
-        // VALIDATION
-        // ------------------------
-        if (!username || !password) {
-            return res.status(422).json({
-                status: false,
-                message: "Validation failed",
-                errors: {
-                    username: "Username is required",
-                    password: "Password is required",
-                },
-            });
-        }
-        // ------------------------
-        // DETERMINE LOGIN FIELD
-        // ------------------------
-        const field = username.includes("@") ? "email" : "phone_number";
-        // ------------------------
-        // FIND USER
-        // ------------------------
-        const user = await prisma.users.findFirst({ where: { [field]: username } });
-        console.log("User found:", user) ;
-        if (!user) {
-            return res.status(401).json({ status: false, message: "Invalid credentials" });
-        }
-        // ------------------------
-        // CHECK PASSWORD
-        // ------------------------
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ status: false, message: "Password Wrong" });
-        }
-        // ------------------------
-        // CHECK USER STATUS
-        // ------------------------
-        if (!["active", "block", "terminate"].includes(user.user_status)) {
-            return res.status(403).json({
-                status: false,
-                message: "Invalid user status. Please contact support.",
-            });
-        }
-        if (user.user_status === "block") {
-            return res.status(403).json({ status: false, message: "User is blocked. Please contact support." });
-        }
-        if (user.user_status === "terminate") {
-            return res.status(403).json({ status: false, message: "User account is terminated." });
-        }
-        // ------------------------
-        // ACTIVE USER LOGIN
-        // ------------------------
-        if (user.user_status === "active") {
-            const ipAddress = req.headers["x-forwarded-for"] ||
-                req.headers["cf-connecting-ip"] ||
-                req.headers["x-real-ip"] ||
-                req.ip;
-const detector = new DeviceDetector();
-const userAgent = req.headers["user-agent"] || "";
-const device = detector.parse(userAgent);
+  const { username, password } = req.body;
+  console.log("Login attempt:", { username, password });
+  try {
+    // ------------------------
+    // VALIDATION
+    // ------------------------
+    if (!username || !password) {
+      return res.status(422).json({
+        status: false,
+        message: "Validation failed",
+        errors: {
+          username: "Username is required",
+          password: "Password is required",
+        },
+      });
+    }
+    // ------------------------
+    // DETERMINE LOGIN FIELD
+    // ------------------------
+    const field = username.includes("@") ? "email" : "phone_number";
+    // ------------------------
+    // FIND USER
+    // ------------------------
+    const user = await prisma.users.findFirst({ where: { [field]: username } });
+    console.log("User found:", user);
+    if (!user) {
+      return res.status(401).json({ status: false, message: "Invalid credentials" });
+    }
+    // ------------------------
+    // CHECK PASSWORD
+    // ------------------------
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ status: false, message: "Password Wrong" });
+    }
+    // ------------------------
+    // CHECK USER STATUS
+    // ------------------------
+    if (!["active", "block", "terminate"].includes(user.user_status)) {
+      return res.status(403).json({
+        status: false,
+        message: "Invalid user status. Please contact support.",
+      });
+    }
+    if (user.user_status === "block") {
+      return res.status(403).json({ status: false, message: "User is blocked. Please contact support." });
+    }
+    if (user.user_status === "terminate") {
+      return res.status(403).json({ status: false, message: "User account is terminated." });
+    }
+    // ------------------------
+    // ACTIVE USER LOGIN
+    // ------------------------
+    if (user.user_status === "active") {
+      const ipAddress = req.headers["x-forwarded-for"] ||
+        req.headers["cf-connecting-ip"] ||
+        req.headers["x-real-ip"] ||
+        req.ip;
+      const detector = new DeviceDetector();
+      const userAgent = req.headers["user-agent"] || "";
+      const device = detector.parse(userAgent);
 
-            // ------------------------
-            // UPDATE USER LOGIN INFO
-            // ------------------------
-            const updatedUser = await prisma.users.update({
-                where: { user_id: BigInt(user.user_id) },
-                data: {
-                    login_with: field === "email" ? "email" : "phone",
-                    login_status: "login",
-                    last_seen: new Date(),
-                    login_count: user.login_count + 1,
-                    last_login: new Date(),
-                    logged_in_device: req.headers["user-agent"],
-                    loggedIn_device_ip: ipAddress,
-                },
-            });
-            // ------------------------
-            // GENERATE TOKEN
-            // ------------------------
-            // Convert UUID to numeric hash
-            // const tokenId = Array.from(uuidv4())
-            //   .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            // console.log(tokenId)
-            const token = jwt.sign({
-                userId: user.user_id.toString(),
-            }, process.env.JWT_SECRET || "secret", { expiresIn: "7d" });
-            // ------------------------
-            // STORE LOGIN DETAILS
-            // ------------------------
-         const deviceData = {
-  clientInfo: device.client || {},       // Browser
-  osInfo: device.os || {},               // OS
-  device: device.device?.type || "desktop",
-  brand: device.device?.brand || null,
-  model: device.device?.model || null,
-};
+      // ------------------------
+      // UPDATE USER LOGIN INFO
+      // ------------------------
+      const updatedUser = await prisma.users.update({
+        where: { user_id: BigInt(user.user_id) },
+        data: {
+          login_with: field === "email" ? "email" : "phone",
+          login_status: "login",
+          last_seen: new Date(),
+          login_count: user.login_count + 1,
+          last_login: new Date(),
+          logged_in_device: req.headers["user-agent"],
+          loggedIn_device_ip: ipAddress,
+        },
+      });
+      // ------------------------
+      // GENERATE TOKEN
+      // ------------------------
+      // Convert UUID to numeric hash
+      // const tokenId = Array.from(uuidv4())
+      //   .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      // console.log(tokenId)
+      const token = jwt.sign({
+        userId: user.user_id.toString(),
+      }, process.env.JWT_SECRET || "secret", { expiresIn: "7d" });
+      // ------------------------
+      // STORE LOGIN DETAILS
+      // ------------------------
+      const deviceData = {
+        clientInfo: device.client || {},       // Browser
+        osInfo: device.os || {},               // OS
+        device: device.device?.type || "desktop",
+        brand: device.device?.brand || null,
+        model: device.device?.model || null,
+      };
 
-            const tokenIds = await prisma.personal_access_tokens.create({
-                data: {
-                    tokenable_type: "users", // table name ya model
-                    tokenable_id: BigInt(user.user_id),
-                    name: "User Token",
-                    token: token, // JWT jo generate kiya
-                    abilities: "logIn_by:user",
-                    created_at: new Date(),
-                },
-            });
-          const login = await prisma.user_login_details.create({
-  data: {
-    user_id: BigInt(user.user_id),
-    token_id: tokenIds.id.toString(),
-    ip_address: ipAddress === "::1" ? "49.36.208.251" : ipAddress,
-    device_details: JSON.stringify(deviceData),
-    device: deviceData.device,
-    browser: device.client?.name || null,
-    os: device.os?.name || null,
-    os_version: device.os?.version || null,
-    login_status: "login",
-    logged_in_at: new Date(),
-    created_at: new Date()
-  },
-});
+      const tokenIds = await prisma.personal_access_tokens.create({
+        data: {
+          tokenable_type: "users", // table name ya model
+          tokenable_id: BigInt(user.user_id),
+          name: "User Token",
+          token: token, // JWT jo generate kiya
+          abilities: "logIn_by:user",
+          created_at: new Date(),
+        },
+      });
+      const login = await prisma.user_login_details.create({
+        data: {
+          user_id: BigInt(user.user_id),
+          token_id: tokenIds.id.toString(),
+          ip_address: ipAddress === "::1" ? "49.36.208.251" : ipAddress,
+          device_details: JSON.stringify(deviceData),
+          device: deviceData.device,
+          browser: device.client?.name || null,
+          os: device.os?.name || null,
+          os_version: device.os?.version || null,
+          login_status: "login",
+          logged_in_at: new Date(),
+          created_at: new Date()
+        },
+      });
 
-            // ------------------------
-            // KEEP LAST 10 LOGIN RECORDS
-            // ------------------------
-            const allLogins = await prisma.user_login_details.findMany({
-                where: { user_id: BigInt(user.user_id) },
-                orderBy: { login_details_id: "desc" },
-                skip: 9,
-                take: 1,
-            });
-            if (allLogins.length > 0) {
-                const cutoffId = allLogins[0].login_details_id;
-                await prisma.user_login_details.deleteMany({
-                    where: { user_id: BigInt(user.user_id), login_details_id: { lt: cutoffId } },
-                });
-            }
-            // ------------------------
-            // TWO-FACTOR AUTH (2FA)
-            // ------------------------
-            const otp = Math.floor(100000 + Math.random() * 900000);
+      // ------------------------
+      // KEEP LAST 10 LOGIN RECORDS
+      // ------------------------
+      const allLogins = await prisma.user_login_details.findMany({
+        where: { user_id: BigInt(user.user_id) },
+        orderBy: { login_details_id: "desc" },
+        skip: 9,
+        take: 1,
+      });
+      if (allLogins.length > 0) {
+        const cutoffId = allLogins[0].login_details_id;
+        await prisma.user_login_details.deleteMany({
+          where: { user_id: BigInt(user.user_id), login_details_id: { lt: cutoffId } },
+        });
+      }
+      // ------------------------
+      // TWO-FACTOR AUTH (2FA)
+      // ------------------------
+      const otp = Math.floor(100000 + Math.random() * 900000);
 
-            if (user.two_factor_auth) {
-                const existingOtp = await prisma.email_otps.findFirst({ where: { user_id: BigInt(user.user_id) } });
-                if (existingOtp) {
-                    await prisma.email_otps.update({
-                        where: { otp_id: BigInt(existingOtp.otp_id) },
-                        data: { otp, expires_at: dayjs().add(5, "minute").toDate() },
-                    });
-                }
-                else {
-                    await prisma.email_otps.create({
-                        data: {
-                            user_id: BigInt(user.user_id),
-                            email: user.email,
-                            otp,
-                            expires_at: dayjs().add(5, "minute").toDate(),
-                        },
-                    });
-                }
+      if (user.two_factor_auth) {
+        const existingOtp = await prisma.email_otps.findFirst({ where: { user_id: BigInt(user.user_id) } });
+        if (existingOtp) {
+          await prisma.email_otps.update({
+            where: { otp_id: BigInt(existingOtp.otp_id) },
+            data: { otp, expires_at: dayjs().add(5, "minute").toDate() },
+          });
+        }
+        else {
+          await prisma.email_otps.create({
+            data: {
+              user_id: BigInt(user.user_id),
+              email: user.email,
+              otp,
+              expires_at: dayjs().add(5, "minute").toDate(),
+            },
+          });
+        }
 
-                console.log(`Send 2FA email to ${user.email} with OTP: ${otp}`);
-            }
+        console.log(`Send 2FA email to ${user.email} with OTP: ${otp}`);
+      }
 
-       try {
-    if (user.two_factor_auth) {
-        await sendTradeEmail("OTP_SEND", user.email, {
+      try {
+        if (user.two_factor_auth) {
+          await sendTradeEmail("OTP_SEND", user.email, {
             user_name: user.name,
             otp_code: otp,
             otp_expiry_minutes: 5
-        });
-    }
-
-    await sendTradeEmail("SAFETY_TIPS", user.email, {
-        user_name: user.username
-    });
-
-} catch (emailError) {
-    console.error(
-        "Email failed but login continued:",
-        emailError?.response?.body || emailError.message
-    );
-}
-
-
-            // ------------------------
-            // RETURN RESPONSE
-            // ------------------------
-            return res.status(200).json({
-                status: true,
-                message: "Login successful",
-                token,
-                twoFactorAuth: !!user.two_factor_auth,
-                emailVerified: !!user.email_verified_at,
-            });
+          });
         }
-        return res.status(403).json({
-            status: false,
-            message: "User status is invalid. Please contact support.",
+
+        await sendTradeEmail("SAFETY_TIPS", user.email, {
+          user_name: user.username
         });
+
+      } catch (emailError) {
+        console.error(
+          "Email failed but login continued:",
+          emailError?.response?.body || emailError.message
+        );
+      }
+
+
+      // ------------------------
+      // RETURN RESPONSE
+      // ------------------------
+      return res.status(200).json({
+        status: true,
+        message: "Login successful",
+        token,
+        twoFactorAuth: !!user.two_factor_auth,
+        emailVerified: !!user.email_verified_at,
+      });
     }
-    catch (error) {
-        console.error("Login error:", error);
-        return res.status(500).json({
-            status: false,
-            message: "An error occurred. Please try again.",
-            errors: error.message,
-        });
-    }
+    return res.status(403).json({
+      status: false,
+      message: "User status is invalid. Please contact support.",
+    });
+  }
+  catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "An error occurred. Please try again.",
+      errors: error.message,
+    });
+  }
 };
 
 export const updateTwoFA = async (req, res) => {

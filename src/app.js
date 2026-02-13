@@ -9,7 +9,9 @@ import fs from "fs";
 import http from "http";   // <- Add this
 import adminRouter from "./routes/adminRoutes.js";
 import usersRouter from "./routes/userRoutes.js";
-// import autoCloseDisputes from "./controller/cronJobs/autoCloseDisputes.js";
+import password from "../src/config/password.js";
+// import autoCloseDisputes from "./controller/cronJobs/
+// autoCloseDisputes.js";
 
 
 BigInt.prototype.toJSON = function () {
@@ -76,6 +78,7 @@ app.get("/", (req, res) => {
 // All your routes
 app.use("/api", adminRouter);
 app.use("/api", usersRouter);
+app.use(password.initialize());
 
 // 404 handler
 app.use((req, res) => {

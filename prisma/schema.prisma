@@ -513,8 +513,6 @@ model trades {
   created_at            DateTime?            @db.Timestamp(0)
   updated_at            DateTime?            @db.Timestamp(0)
   ticket support_tickets? @relation("TicketTrades", fields: [support_ticket_number], references: [ticket_number])
-
-
 }
 
 model transactions {
@@ -581,6 +579,17 @@ model user_login_details {
   @@index([user_id], map: "user_login_details_user_id_foreign")
 }
 
+model user_blocks {
+  id           BigInt   @id @default(autoincrement())
+  blocked_by    BigInt
+  blocked_user  BigInt
+  created_at    DateTime @default(now())
+   blockedUser   users @relation(fields: [blocked_user], references: [user_id], name: "blocked_user_relation")
+  blockedByUser users @relation(fields: [blocked_by], references: [user_id], name: "blocked_by_relation")
+  @@unique([blocked_by, blocked_user])
+}
+
+
 model users {
   user_id                      BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
   name                         String?                   @db.VarChar(100)
@@ -629,7 +638,8 @@ model users {
       reportedBy    reports[] @relation("Reporter")
   reportedUsers reports[] @relation("ReportedTo")
 feedback   feedback[] // normal feedback given TO this user
-
+  blockedBy    user_blocks[] @relation("blocked_by_relation")   // users this user blocked
+  blockedUsers user_blocks[] @relation("blocked_user_relation") // users who blocked this user
 
 }
 

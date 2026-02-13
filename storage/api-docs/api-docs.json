@@ -9166,6 +9166,312 @@
                 ]
             }
         },
+        "/api/block-user": {
+  "post": {
+    "tags": [
+      "User Controller"
+    ],
+    "summary": "Block a user",
+    "operationId": "blockUserOperation",
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "blocked_user": {
+                "type": "string",
+                "example": "25"
+              }
+            },
+            "required": ["blocked_user"]
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "User blocked successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "User blocked successfully"
+                }
+              }
+            }
+          }
+        }
+      },
+      "400": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "User already blocked"
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "unauthorized"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "User not authenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Something went wrong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ]
+  }
+},
+
+"/api/unblock-user": {
+  "post": {
+    "tags": [
+      "User Controller"
+    ],
+    "summary": "Unblock a user",
+    "operationId": "unblockUserOperation",
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "blocked_user": {
+                "type": "string",
+                "example": "25"
+              }
+            },
+            "required": ["blocked_user"]
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "User successfully unblocked",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "boolean", "example": true },
+                "message": {
+                  "type": "string",
+                  "example": "User successfully unblocked"
+                }
+              }
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "User not blocked",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "boolean", "example": false },
+                "message": {
+                  "type": "string",
+                  "example": "User is not blocked"
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "unauthorized"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "User not authenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "boolean", "example": false },
+                "message": {
+                  "type": "string",
+                  "example": "Something went wrong"
+                },
+                "errors": { "type": "string", "example": "Database error message" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ]
+  }
+},
+
+"/api/user/get-blocked-users": {
+  "get": {
+    "tags": [
+      "User Controller"
+    ],
+    "summary": "Retrieve the list of users blocked by the logged-in user",
+    "operationId": "getBlockedUsers",
+    "responses": {
+      "200": {
+        "description": "Blocked users retrieved successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Blocked users retrieved successfully"
+                },
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "blocked_user": {
+                        "type": "string",
+                        "example": "25"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-02-13T10:30:00.000Z"
+                      },
+                      "blocked_user_relation": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "example": "John Doe"
+                          },
+                          "email": {
+                            "type": "string",
+                            "example": "john@example.com"
+                          }
+                        },
+                        "nullable": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "boolean", "example": false },
+                "message": { "type": "string", "example": "Something went wrong" },
+                "errors": { "type": "string", "example": "Error details here" }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "example": "unauthorized" },
+                "message": { "type": "string", "example": "User not authenticated" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ]
+  }
+},
+
+
         "/api/address/get-id-verification-details": {
             "get": {
                 "tags": [

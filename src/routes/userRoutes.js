@@ -1,9 +1,9 @@
 import express from "express";
-
+import jwt from "jsonwebtoken";
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import { sendEmailOtp, sendSmsOTP, verifyEmailOtp } from "../controller/OtpController.js";
 import { addNumber, login, logout, logoutFromOtherToken, passwordVerification, register, resetPassword, sendResetLink, updateTwoFA, updateTwoFaSet } from "../controller/user/authController.js";
-import { changePassword, getReferralLink, getSecurityQuestion, loginHistory, preferredCurrency, preferredTimezone, securityQuestion, updateBio, updateDisplayNamePreference, updateProfileImage, updateUsername, userDetail } from "../controller/user/UserController.js";
+import { blockUser, changePassword, getBlockedUsers, getReferralLink, getSecurityQuestion, loginHistory, preferredCurrency, preferredTimezone, securityQuestion, unblockUser, updateBio, updateDisplayNamePreference, updateProfileImage, updateUsername, userDetail } from "../controller/user/UserController.js";
 import { addressVerification, getAddressVerification, getIdDetails, storeAddress } from "../controller/user/AddressVerificationController.js";
 import { singelUpload, upload, uploadAttachments } from "../middleware/upload.js";
 import { addUpiDetails, deleteMethod, getPaymentDetails, getUpiDetails, storePaymentDetails, updateIsPrimary, updatePaymentDetails, updateUpiDetails } from "../controller/user/PaymentController.js";
@@ -24,7 +24,181 @@ import { sendOtp } from "../controller/user/SandboxController.js";
 import { createFeedback, getFeedback, giveCryptoFeedback } from "../controller/user/FeedbackController.js";
 import { getCountries, getCountriesCurrency, getCountriesDialingCode, getTimezone } from "../controller/CountryController.js";
 import { sendBnb, sendBtc, sendEth, sendUsdt } from "../controller/user/sendEth.js";
+import passport from "../config/password.js";
+import DeviceDetector from "device-detector-js";
+import prisma from "../config/prismaClient.js";
+import dayjs from "dayjs";
+
 const router = express.Router();
+router.get(
+  "/auth/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  })
+);
+router.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { session: false }),
+  async (req, res) => {
+    try {
+      const user = req.user;
+
+      if (!user) {
+        return res.redirect("http://localhost:5173/login");
+      }
+
+      // ------------------------
+      // CHECK USER STATUS
+      // ------------------------
+      if (user.user_status === "block") {
+        return res.redirect("http://localhost:5173/login?error=blocked");
+      }
+
+      if (user.user_status === "terminate") {
+        return res.redirect("http://localhost:5173/login?error=terminated");
+      }
+
+      // ------------------------
+      // GET IP & DEVICE
+      // ------------------------
+      const ipAddress =
+        req.headers["x-forwarded-for"] ||
+        req.headers["cf-connecting-ip"] ||
+        req.headers["x-real-ip"] ||
+        req.ip;
+
+      const detector = new DeviceDetector();
+      const userAgent = req.headers["user-agent"] || "";
+      const device = detector.parse(userAgent);
+
+      // ------------------------
+      // UPDATE USER LOGIN INFO
+      // ------------------------
+      await prisma.users.update({
+        where: { user_id: BigInt(user.user_id) },
+        data: {
+          login_with: "google",
+          login_status: "login",
+          last_seen: new Date(),
+          login_count: user.login_count + 1,
+          last_login: new Date(),
+          logged_in_device: userAgent,
+          loggedIn_device_ip: ipAddress,
+        },
+      });
+
+      // ------------------------
+      // GENERATE JWT TOKEN
+      // ------------------------
+      const token = jwt.sign(
+        { userId: user.user_id.toString() },
+        process.env.JWT_SECRET || "secret",
+        { expiresIn: "7d" }
+      );
+
+      // ------------------------
+      // SAVE TOKEN
+      // ------------------------
+      const tokenRecord = await prisma.personal_access_tokens.create({
+        data: {
+          tokenable_type: "users",
+          tokenable_id: BigInt(user.user_id),
+          name: "Google User Token",
+          token: token,
+          abilities: "login_by:google",
+          created_at: new Date(),
+        },
+      });
+
+      // ------------------------
+      // SAVE LOGIN DETAILS
+      // ------------------------
+      const deviceData = {
+        clientInfo: device.client || {},
+        osInfo: device.os || {},
+        device: device.device?.type || "desktop",
+        brand: device.device?.brand || null,
+        model: device.device?.model || null,
+      };
+
+      await prisma.user_login_details.create({
+        data: {
+          user_id: BigInt(user.user_id),
+          token_id: tokenRecord.id.toString(),
+          ip_address: ipAddress === "::1" ? "49.36.208.251" : ipAddress,
+          device_details: JSON.stringify(deviceData),
+          device: deviceData.device,
+          browser: device.client?.name || null,
+          os: device.os?.name || null,
+          os_version: device.os?.version || null,
+          login_status: "login",
+          logged_in_at: new Date(),
+          created_at: new Date(),
+        },
+      });
+
+      // ------------------------
+      // KEEP LAST 10 LOGIN RECORDS
+      // ------------------------
+      const oldLogins = await prisma.user_login_details.findMany({
+        where: { user_id: BigInt(user.user_id) },
+        orderBy: { login_details_id: "desc" },
+        skip: 9,
+        take: 1,
+      });
+
+      if (oldLogins.length > 0) {
+        const cutoffId = oldLogins[0].login_details_id;
+
+        await prisma.user_login_details.deleteMany({
+          where: {
+            user_id: BigInt(user.user_id),
+            login_details_id: { lt: cutoffId },
+          },
+        });
+      }
+
+      // ------------------------
+      // OPTIONAL 2FA (Same Logic)
+      // ------------------------
+      // if (user.two_factor_auth) {
+      //   const otp = Math.floor(100000 + Math.random() * 900000);
+
+      //   await prisma.email_otps.upsert({
+      //     where: { user_id: BigInt(user.user_id) },
+      //     update: {
+      //       otp,
+      //       expires_at: dayjs().add(5, "minute").toDate(),
+      //     },
+      //     create: {
+      //       user_id: BigInt(user.user_id),
+      //       email: user.email,
+      //       otp,
+      //       expires_at: dayjs().add(5, "minute").toDate(),
+      //     },
+      //   });
+
+      //   await sendTradeEmail("OTP_SEND", user.email, {
+      //     user_name: user.name,
+      //     otp_code: otp,
+      //     otp_expiry_minutes: 5,
+      //   });
+      // }
+
+      // ------------------------
+      // REDIRECT FRONTEND WITH TOKEN
+      // ------------------------
+      return res.redirect(
+        `http://localhost:5173/auth/google/callback?token=${token}`
+      );
+
+    } catch (error) {
+      console.error("Google Login Error:", error);
+      return res.redirect("http://localhost:5173/login?error=server");
+    }
+  }
+);
+
 router.post("/auth/register", formData, register);
 router.post("/auth/login", formData, login);
 router.post("/verify-email-otp", formData, authenticateUser, checkUserStatus, verifyEmailOtp);
@@ -32,9 +206,12 @@ router.post("/send-email-otp", formData, authenticateUser, checkUserStatus, send
 router.post("/send-sms-otp", authenticateUser, checkUserStatus, sendSmsOTP);
 router.post("/send-release-otp", authenticateUser, checkUserStatus, sendReleaseOtp);
 router.post("/verify-release-otp", formData, authenticateUser, checkUserStatus, verifyReleaseOtp);
-
 router.post("/display-name-preference", authenticateUser, updateDisplayNamePreference);
 router.get("/user-details", authenticateUser, checkUserStatus, userDetail);
+router.post("/block-user", authenticateUser, checkUserStatus, blockUser);
+router.post("/unblock-user", authenticateUser, checkUserStatus, unblockUser);
+router.get("/user/get-blocked-users", authenticateUser, checkUserStatus, getBlockedUsers);
+
 router.get("/get-referral-link", authenticateUser, checkUserStatus, getReferralLink);
 router.get("/login-history", authenticateUser, checkUserStatus, loginHistory);
 router.post("/address/address-verification", authenticateUser, checkUserStatus, upload.fields([{ name: "front_document", maxCount: 1 }, { name: "back_document", maxCount: 1 }]), addressVerification);

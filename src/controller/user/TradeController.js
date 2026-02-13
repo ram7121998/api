@@ -96,6 +96,36 @@ export const initiateTrade = async (req, res) => {
     console.log(cryptoAd)
     console.log(tradeAmount)
 
+    const loggedInUserId = user.user_id.toString();
+const cryptoAdOwnerId = cryptoAd.user_id.toString();
+const isBlocked = await prisma.user_blocks.findFirst({
+    where: {
+        blocked_user: loggedInUserId,
+        blocked_by: cryptoAdOwnerId
+    }
+});
+
+if (isBlocked) {
+    return res.status(403).json({
+        status: false,
+        message: "You cannot start a trade with this user."
+    });
+}
+
+const hasBlocked = await prisma.user_blocks.findFirst({
+    where: {
+        blocked_by: loggedInUserId,
+        blocked_user: cryptoAdOwnerId
+    }
+});
+
+if (hasBlocked) {
+    return res.status(403).json({
+        status: false,
+        message: "You have blocked this trader. Cannot start trade."
+    });
+}
+
 
     if (tradeAmount < cryptoAd.min_trade_limit) throw new Error("You cannot trade below allowed limit.");
     if (tradeAmount > cryptoAd.max_trade_limit) throw new Error("You cannot trade above allowed limit.");
@@ -1713,6 +1743,7 @@ export const sellerUpdateTrade = async (req, res) => {
           seller_status: response,
           buyer_status: response,
           trade_status: response,
+            asset_send_at: dayjs().tz("Asia/Kolkata").toDate(),
           trade_remark:
             response === "reject"
               ? "Trade rejected by seller."

@@ -9,10 +9,14 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime.js";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
+import { userDetails } from "./CryptoAdController.js";
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 // Controller function
+// 🔝 Sabse upar rakho
+
+
 export const userDetail = async (req, res) => {
   try {
     let userId;
@@ -34,10 +38,10 @@ export const userDetail = async (req, res) => {
         message: "User not found",
       });
     }
-    console.log("user",user)
+    console.log("user", user)
 
-    const userDetails =  await getUserDetails(user,true);
- const [totalLikes, totalDislikes] = await Promise.all([
+    const userDetails = await getUserDetails(user, true);
+    const [totalLikes, totalDislikes] = await Promise.all([
       prisma.feedback.count({
         where: { user_id: BigInt(userId), like: true },
       }),
@@ -45,16 +49,132 @@ export const userDetail = async (req, res) => {
         where: { user_id: BigInt(userId), dislike: true },
       }),
     ]);
-    res.status(200).json({
-      status: true,
-   response: {
-        ...userDetails,
-        feedback: {
-       total_likes: totalLikes,
-          total_dislikes: totalDislikes,
+    const userIdStr = userId.toString();
+
+    const tradesReleased = await prisma.trades.count({
+      where: {
+        OR: [
+          { seller_id: userIdStr },
+          { buyer_id: userIdStr },
+        ],
+        trade_status: {
+          in: ["success", "disputedSuccess"],
         },
       },
-        });
+    });
+    const sellerPartners = await prisma.trades.findMany({
+      where: {
+        buyer_id: userIdStr,
+      },
+      distinct: ["seller_id"],
+      select: { seller_id: true },
+    });
+
+    const buyerPartners = await prisma.trades.findMany({
+      where: {
+        seller_id: userIdStr,
+      },
+      distinct: ["buyer_id"],
+      select: { buyer_id: true },
+    });
+
+    const tradePartners =
+      sellerPartners.length + buyerPartners.length;
+    const successfulTrades = await prisma.trades.count({
+      where: {
+        OR: [
+          { seller_id: userIdStr },
+          { buyer_id: userIdStr },
+        ],
+        trade_status: {
+          in: ["success", "disputedSuccess"],
+        },
+      },
+    });
+
+    // 2️⃣ Failed Trades
+    const failedTrades = await prisma.trades.count({
+      where: {
+        OR: [
+          { seller_id: userIdStr },
+          { buyer_id: userIdStr },
+        ],
+        trade_status: {
+          in: ["reject", "cancel", "expired"],
+        },
+      },
+    });
+
+    const totalCompletedTrades = successfulTrades + failedTrades;
+
+    // 3️⃣ Final Percentage
+    const tradeSuccess =
+      totalCompletedTrades > 0
+        ? ((successfulTrades / totalCompletedTrades) * 100).toFixed(1)
+        : "0.0";
+    const trades = await prisma.trades.findMany({
+      where: {
+        buyer_id: userIdStr,
+        paid_at: { not: null },
+        created_at: { not: null },
+        trade_status: {
+          in: ["success", "disputedSuccess"],
+        },
+      },
+      select: {
+        created_at: true,
+        paid_at: true,
+      },
+    });
+
+    let totalMilliseconds = 0;
+    let validTrades = 0;
+
+    trades.forEach((trade) => {
+      const created = new Date(trade.created_at).getTime();
+      const paid = new Date(trade.paid_at).getTime();
+
+      if (paid > created) {
+        totalMilliseconds += (paid - created);
+        validTrades++;
+      }
+    });
+
+    const avgMilliseconds =
+      validTrades > 0
+        ? totalMilliseconds / validTrades
+        : 0;
+
+    // Convert properly
+    const totalSeconds = Math.floor(avgMilliseconds / 1000);
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const avgTimeToPayment = `${minutes}m ${seconds}s`;
+    const avgTimeToRelease = await getAvgTimeToRelease(userId);
+    const avgTradeVolume = await getTradeVolumeRange(userId);
+    const getBlocked = await getBlockedByCount(userId);
+    const hasBlocked = await getHasBlockedCount(userId);
+    res.status(200).json({
+      status: true,
+      response: {
+        ...userDetails,
+        feedback: {
+          total_likes: totalLikes,
+          total_dislikes: totalDislikes,
+        },
+        additional_info: {
+          trades_released: tradesReleased,
+          trade_partners: tradePartners,
+          trade_success_rate: tradeSuccess,
+          avgTimeToPayment: avgTimeToPayment,
+          avgTimeToRelease: avgTimeToRelease,
+          avgTradeVolume: avgTradeVolume,
+          BlockedBy: getBlocked,
+          hasBlocked: hasBlocked
+        },
+      },
+    });
 
     if (user.country !== userDetails.country?.toLowerCase()) {
       prisma.users.update({
@@ -68,6 +188,138 @@ export const userDetail = async (req, res) => {
       status: false,
       message: "Unable to fetch user's details",
       errors: error.message,
+    });
+  }
+};
+
+export const blockUser = async (req, res) => {
+  try {
+    const blocked_by = String(req.user.user_id); // ✅ fixed
+    const { blocked_user } = req.body;
+
+    // 1️⃣ Check blocked_user required
+    if (!blocked_user) {
+      return res.status(400).json({
+        success: false,
+        message: "Blocked user id required",
+      });
+    }
+
+    // 2️⃣ Self block check
+    if (blocked_by === String(blocked_user)) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot block yourself",
+      });
+    }
+
+    // 3️⃣ Create block entry
+    await prisma.user_blocks.create({
+      data: {
+        blocked_by,
+        blocked_user: String(blocked_user),
+      },
+    });
+
+    return res.status(201).json({   // ✅ 201 better for create
+      success: true,
+      message: "User blocked successfully",
+    });
+
+  } catch (error) {
+
+    // 4️⃣ Unique constraint error (Already blocked)
+    if (error.code === "P2002") {
+      return res.status(409).json({   // ✅ 409 Conflict better
+        success: false,
+        message: "User already blocked",
+      });
+    }
+
+    console.error("Block User Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const unblockUser = async (req, res) => {
+  try {
+    const loggedInUserId = req.user.user_id.toString(); // logged-in user
+    const { blocked_user } = req.body;
+
+    if (!blocked_user) {
+      return res.status(422).json({
+        status: false,
+        message: "Validation failed",
+        errors: "blocked_user is required",
+      });
+    }
+    console.log("loggedInUserId", loggedInUserId)
+    console.log("blocked_user", blocked_user)
+
+
+    // Check if user is actually blocked
+    const blockRecord = await prisma.user_blocks.findFirst({
+      where: {
+        blocked_by: loggedInUserId,
+        blocked_user: blocked_user.toString(),
+      },
+    });
+
+    if (!blockRecord) {
+      return res.status(404).json({
+        status: false,
+        message: "User is not blocked",
+      });
+    }
+
+    // Delete block record → unblock user
+    await prisma.user_blocks.delete({
+      where: { id: blockRecord.id },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "User successfully unblocked",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Something went wrong",
+      errors: error.message,
+    });
+  }
+};
+export const getBlockedUsers = async (req, res) => {
+  try {
+    const userId = BigInt(req.user.user_id); // logged-in user
+
+    // fetch blocked users with user details
+    const blockedUsers = await prisma.user_blocks.findMany({
+      where: { blocked_by: userId },
+      select: {
+        id: true,
+        blocked_user: true,
+        created_at: true,
+        blockedUser: userDetails(userId)
+      },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Blocked users fetched successfully",
+      data: blockedUsers,
+    });
+
+  } catch (error) {
+    console.error("Get Blocked Users Error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Something went wrong",
+      errors: error.message
     });
   }
 };
@@ -167,84 +419,84 @@ export const getReferralLink = async (req, res) => {
 
 
 export const loginHistory = async (req, res) => {
-    try {
-        const userId = req.user?.user_id;
-        if (!userId) {
-            return res.status(401).json({
-                status: false,
-                message: "User not found.",
-            });
-        }
-        // Fetch user
-        const user = await prisma.users.findUnique({
-            where: { user_id: BigInt(userId) },
-        });
-        if (!user) {
-            return res.status(404).json({
-                status: false,
-                message: "User not found.",
-            });
-        }
-        // Fetch login history
-        const loginDetails = await prisma.user_login_details.findMany({
-            where: { user_id: BigInt(userId) },
-            orderBy: { logged_in_at: "desc" },
-        });
-        if (!loginDetails || loginDetails.length === 0) {
-            return res.status(404).json({
-                status: false,
-                message: "User's login history were not found.",
-            });
-        }
-        const timezone = user.preferred_timezone || "Asia/Kolkata";
-        const requiredData = await Promise.all(loginDetails.map(async (loginHistory) => {
-            const loginAt = moment(loginHistory.logged_in_at)
-                .tz(timezone)
-                .format("YYYY-MM-DD hh:mm A");
-            const loginDuration = moment(loginHistory.logged_in_at)
-                .tz(timezone)
-                .fromNow();
-            // Get location from IP
-            let countryData = {};
-            try {
-                const response = await axios.get(`http://ip-api.com/json/${loginHistory.ip_address}`);
-                console.log("ip-api response", response.data);
-                countryData = response.data || {};
-            }
-            catch (err) {
-                countryData = {};
-            }
-            // Check if this session/token is current
-            const isCurrent = loginHistory.token_id === req.user?.token_id;
-            return {
-                loginDetailsId: loginHistory.login_details_id.toString(),
-                ipAddress: loginHistory.ip_address,
-                deviceDetails: loginHistory.device_details,
-                device: loginHistory.device,
-                browser: loginHistory.browser,
-                os: loginHistory.os,
-                osVersion: loginHistory.os_version,
-                loginStatus: loginHistory.login_status,
-                loginAt,
-                loginDuration,
-                countryName: countryData.country || "N/A",
-                countryCity: countryData.city || "N/A",
-                current: isCurrent,
-            };
-        }));
-        return res.status(200).json({
-            status: true,
-            message: "Login Details found successfully.",
-            data: requiredData,
-        });
+  try {
+    const userId = req.user?.user_id;
+    if (!userId) {
+      return res.status(401).json({
+        status: false,
+        message: "User not found.",
+      });
     }
-    catch (error) {
-        return res.status(500).json({
-            status: false,
-            message: "Something went wrong",
-            errors: error.message,
-        });
+    // Fetch user
+    const user = await prisma.users.findUnique({
+      where: { user_id: BigInt(userId) },
+    });
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found.",
+      });
     }
+    // Fetch login history
+    const loginDetails = await prisma.user_login_details.findMany({
+      where: { user_id: BigInt(userId) },
+      orderBy: { logged_in_at: "desc" },
+    });
+    if (!loginDetails || loginDetails.length === 0) {
+      return res.status(404).json({
+        status: false,
+        message: "User's login history were not found.",
+      });
+    }
+    const timezone = user.preferred_timezone || "Asia/Kolkata";
+    const requiredData = await Promise.all(loginDetails.map(async (loginHistory) => {
+      const loginAt = moment(loginHistory.logged_in_at)
+        .tz(timezone)
+        .format("YYYY-MM-DD hh:mm A");
+      const loginDuration = moment(loginHistory.logged_in_at)
+        .tz(timezone)
+        .fromNow();
+      // Get location from IP
+      let countryData = {};
+      try {
+        const response = await axios.get(`http://ip-api.com/json/${loginHistory.ip_address}`);
+        console.log("ip-api response", response.data);
+        countryData = response.data || {};
+      }
+      catch (err) {
+        countryData = {};
+      }
+      // Check if this session/token is current
+      const isCurrent = loginHistory.token_id === req.user?.token_id;
+      return {
+        loginDetailsId: loginHistory.login_details_id.toString(),
+        ipAddress: loginHistory.ip_address,
+        deviceDetails: loginHistory.device_details,
+        device: loginHistory.device,
+        browser: loginHistory.browser,
+        os: loginHistory.os,
+        osVersion: loginHistory.os_version,
+        loginStatus: loginHistory.login_status,
+        loginAt,
+        loginDuration,
+        countryName: countryData.country || "N/A",
+        countryCity: countryData.city || "N/A",
+        current: isCurrent,
+      };
+    }));
+    return res.status(200).json({
+      status: true,
+      message: "Login Details found successfully.",
+      data: requiredData,
+    });
+  }
+  catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Something went wrong",
+      errors: error.message,
+    });
+  }
 };
 
 
@@ -380,7 +632,7 @@ export const changePassword = async (req, res) => {
       });
 
       // Create notification
-    const notification = await prismaTx.notifications.create({
+      const notification = await prismaTx.notifications.create({
         data: {
           user_id: userId,
           title: "Password changed successfully.",
@@ -391,7 +643,7 @@ export const changePassword = async (req, res) => {
 
         },
       });
-     io.to(notification.user_id.toString()).emit("new_notification", notification);
+      io.to(notification.user_id.toString()).emit("new_notification", notification);
 
     });
 
@@ -505,7 +757,7 @@ export const securityQuestion = async (req, res) => {
         });
       }
 
-     const notification = await tx.notifications.create({
+      const notification = await tx.notifications.create({
         data: {
           user_id: userId,
           title: "Security questions updated successfully.",
@@ -714,14 +966,14 @@ export const updateDisplayNamePreference = async (req, res) => {
       });
     }
 
-        const updatedUser = await prisma.users.update({
+    const updatedUser = await prisma.users.update({
       where: { user_id: userId },
       data: {
         display_name_preference,
       },
     });
 
-   
+
     return res.json({
       status: true,
       message: "Display name preference updated successfully",
@@ -735,3 +987,128 @@ export const updateDisplayNamePreference = async (req, res) => {
     });
   }
 };
+
+const getAvgTimeToRelease = async (userId) => {
+  try {
+    const userIdStr = userId.toString();
+
+    // 1️⃣ Fetch relevant trades
+    const releaseTrades = await prisma.trades.findMany({
+      where: {
+        seller_id: userIdStr,
+        paid_at: { not: null },
+        asset_send_at: { not: null },
+        trade_status: {
+          in: ["success", "disputedSuccess"],
+        },
+      },
+      select: {
+        paid_at: true,
+        asset_send_at: true,
+      },
+    });
+
+    if (!releaseTrades.length) {
+      return "0m 0s";
+    }
+
+    // 2️⃣ Calculate total time difference
+    let totalMilliseconds = 0;
+    let validTrades = 0;
+
+    releaseTrades.forEach((trade) => {
+      const paidTime = new Date(trade.paid_at).getTime();
+      const releasedTime = new Date(trade.asset_send_at).getTime();
+
+      if (releasedTime > paidTime) {
+        totalMilliseconds += (releasedTime - paidTime);
+        validTrades++;
+      }
+    });
+
+    if (!validTrades) {
+      return "0m 0s";
+    }
+
+    // 3️⃣ Calculate average
+    const avgMilliseconds = totalMilliseconds / validTrades;
+
+    const totalSeconds = Math.floor(avgMilliseconds / 1000);
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}m ${seconds}s`;
+
+  } catch (error) {
+    console.error("Error calculating Avg Time To Release:", error);
+    return "0m 0s";
+  }
+};
+const getTradeVolumeRange = async (userId) => {
+  try {
+    const userIdStr = userId.toString();
+
+    const result = await prisma.trades.aggregate({
+      _min: {
+        buy_value: true,
+      },
+      _max: {
+        buy_value: true,
+      },
+      where: {
+        seller_id: userIdStr,
+        trade_status: {
+          in: ["success", "disputedSuccess"],
+        },
+        buy_value: {
+          gt: 0, // ✅ zero ignore karega
+        },
+      },
+    });
+
+    const minVolume = Number(result._min.buy_value || 0);
+    const maxVolume = Number(result._max.buy_value || 0);
+
+    if (!minVolume && !maxVolume) {
+      return "0 - 0 USD";
+    }
+
+    return `${minVolume} - ${maxVolume} USD`;
+
+  } catch (error) {
+    console.error("Error calculating trade volume range:", error);
+    return "0 - 0 USD";
+  }
+};
+async function getBlockedByCount(userId) {
+  try {
+    const count = await prisma.user_blocks.count({
+      where: {
+        blocked_user: userId.toString(),
+      },
+    });
+
+    return count === 1 ? "1 USER" : `${count} USERS`;
+
+  } catch (error) {
+    console.error(error);
+    return "0 USERS";
+  }
+}
+
+async function getHasBlockedCount(userId) {
+  try {
+    const count = await prisma.user_blocks.count({
+      where: {
+        blocked_by: userId.toString(),
+      },
+    });
+
+    return count === 1 ? "1 USER" : `${count} USERS`;
+
+  } catch (error) {
+    console.error(error);
+    return "0 USERS";
+  }
+}

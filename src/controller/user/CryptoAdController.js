@@ -440,8 +440,36 @@ export const getCryptoAd = async (req, res) => {
             },
         });
 
+let blockedByUsers = [];
+let hasBlockedUsers = [];
+
+if (loggedInUserId) {
+    // 1️⃣ Users who blocked me → "Blocked By"
+    blockedByUsers = await prisma.user_blocks.findMany({
+        where: { blocked_user: loggedInUserId },
+        select: { blocked_by: true }
+    });
+
+    // 2️⃣ Users I have blocked → "Has Blocked"
+    hasBlockedUsers = await prisma.user_blocks.findMany({
+        where: { blocked_by: loggedInUserId },
+        select: { blocked_user: true }
+    });
+}
+
+// Create Sets for lookup
+const blockedByUsersSet = new Set(blockedByUsers.map(b => b.blocked_by));
+const hasBlockedUsersSet = new Set(hasBlockedUsers.map(b => b.blocked_user));
+
+// Filter ads
+ads = ads.filter(ad => {
+    const adUserId = ad.user_id.toString();
+    return !blockedByUsersSet.has(adUserId) && !hasBlockedUsersSet.has(adUserId);
+});
+
 
         ads = ads.map(ad => {
+         
             const adFeedbacks = feedbacks.filter(
                 f => f.user_id === ad.user_id
             );
