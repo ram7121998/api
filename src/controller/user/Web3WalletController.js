@@ -8,6 +8,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import TronWeb from 'tronweb';
 import * as ecc from 'tiny-secp256k1';
 import ECPairFactory from 'ecpair';
+import axios from "axios";
 
 bitcoin.initEccLib(ecc);
 const ECPair = ECPairFactory(ecc);
@@ -42,8 +43,8 @@ export const createWeb3Wallet = async (req, res) => {
 
         const isValid = validCombinations.some(
             v => v.blockchain === blockchain &&
-                 v.network === network &&
-                 v.asset.includes(asset)
+                v.network === network &&
+                v.asset.includes(asset)
         );
 
         if (!isValid) {
@@ -78,10 +79,10 @@ export const createWeb3Wallet = async (req, res) => {
 
         if (blockchain === 'ethereum' || blockchain === 'binance') {
             wallet = generateEthBscWallet();
-        } 
+        }
         else if (blockchain === 'bitcoin') {
             wallet = generateBtcWallet();
-        } 
+        }
         else if (blockchain === 'tron') {
             wallet = await generateTronWallet();
         }
@@ -232,13 +233,17 @@ export const getWeb3WalletDetails = async (req, res) => {
 
         const requiredData = {};
         let totalBtcValue = 0;
+        let totalINRValue = 0; // <-- add this
+
         const timezone = user.preferred_timezone || 'Asia/Kolkata';
 
         for (const walletData of walletDatas) {
             const remainingAmount = Number(walletData.remaining_amount - walletData.hold_asset).toFixed(18);
             const btcValue = await getBTCEquivalent(walletData.asset, remainingAmount);
             totalBtcValue += parseFloat(btcValue);
-
+            // INR value
+            const inrValue = await getINREquivalent(walletData.asset, remainingAmount);
+            totalINRValue += parseFloat(inrValue);
             const data = {
                 wallet_id: walletData.wallet_id,
                 user_id: walletData.user_id,
@@ -255,7 +260,7 @@ export const getWeb3WalletDetails = async (req, res) => {
                 internal_deposit: walletData.internal_deposit,
                 status: walletData.status,
                 dateTime: moment(walletData.created_at).tz(timezone).format('YYYY-MM-DD hh:mm A'),
-                btcValue: parseFloat(btcValue).toFixed(18)
+                btcValue: parseFloat(btcValue).toFixed(18),
             };
 
             if (requiredData[walletData.blockchain]) {
@@ -272,6 +277,7 @@ export const getWeb3WalletDetails = async (req, res) => {
             status: true,
             message: 'Web3 wallet details fetched successfully.',
             data: requiredData,
+            totalINRValue: totalINRValue.toFixed(2), // <-- total INR here
             totalBtcValue: totalBtcValue.toFixed(18),
             edata: encryptedData
         });
@@ -435,4 +441,32 @@ const generateTronWallet = async () => {
         address: wallet.address.base58,   // T...
         privateKey: wallet.privateKey
     };
+};
+
+const getINREquivalent = async (asset, amount) => {
+    const priceInINR = await getCryptoPriceInINR(asset); // You implement API call
+    return parseFloat(amount) * parseFloat(priceInINR);
+};
+export const getCryptoPriceInINR = async (asset) => {
+    try {
+        // Convert symbol to CoinGecko id
+        const coinMap = {
+            btc: 'bitcoin',
+            eth: 'ethereum',
+            usdt: 'tether',
+            bnb: 'binancecoin',
+        };
+
+        const coinId = coinMap[asset.toLowerCase()];
+        if (!coinId) return 0;
+
+        const response = await axios.get(
+            `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=inr`
+        );
+
+        return response.data[coinId].inr || 0;
+    } catch (err) {
+        console.error('Error fetching crypto price:', err.message);
+        return 0;
+    }
 };

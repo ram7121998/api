@@ -9470,7 +9470,206 @@
     ]
   }
 },
+"/api/explore-marketplace": {
+  "get": {
+    "tags": [
+      "P2P Marketplace"
+    ],
+    "summary": "Retrieve P2P marketplace stats",
+    "operationId": "getP2PStats",
+    "description": "Returns online users, active offers, trade volume in last 24h, and total liquidity",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "P2P marketplace stats retrieved successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "message": {
+                  "type": "string",
+                  "example": "P2P marketplace stats fetched successfully"
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "explore": {
+                      "type": "string",
+                      "example": "P2P Marketplace"
+                    },
+                    "onlineUsers": {
+                      "type": "integer",
+                      "example": 40256
+                    },
+                    "userOffers": {
+                      "type": "integer",
+                      "example": 464001
+                    },
+                    "trade24hVolumeUSD": {
+                      "type": "number",
+                      "example": 40256
+                    },
+                    "totalLiquidityUSD": {
+                      "type": "number",
+                      "example": 40256
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "unauthorized"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "User not authenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Something went wrong"
+                },
+                "errors": {
+                  "type": "string",
+                  "example": "Database error details"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+},
 
+"/api/get-accountinfo": {
+  "get": {
+    "tags": [
+      "User Controller"
+    ],
+    "summary": "Retrieve user's account level and P2P limit details",
+    "operationId": "getUserAccountInfoDetails",
+    "responses": {
+      "200": {
+        "description": "Account info retrieved successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "accountLevel": {
+                      "type": "integer",
+                      "example": 2
+                    },
+                    "levelName": {
+                      "type": "string",
+                      "example": "Standard"
+                    },
+                    "accountLimit": {
+                      "type": "integer",
+                      "example": 100000
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "unauthorized"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "User not authenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Unable to retrieve account information"
+                },
+                "errors": {
+                  "type": "string",
+                  "example": "Something went wrong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ]
+  }
+},
 
         "/api/address/get-id-verification-details": {
             "get": {

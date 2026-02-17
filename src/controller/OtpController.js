@@ -298,8 +298,8 @@ export const sendSmsOTP = async (req, res) => {
     // ===============================
     const response = await axios.post(url, {
       phoneNumber: phone,
-      // clientType: "CLIENT_TYPE_WEB",
-      // recaptchaToken: req.body.recaptcha_token,
+      clientType: "CLIENT_TYPE_WEB",
+      recaptchaToken: req.body.recaptcha_token,
     });
 
     return res.status(200).json({

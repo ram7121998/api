@@ -94,7 +94,7 @@ export const getIdVerificationDetails = async (req, res) => {
     const filters = {};
     if (req.query.user_id) filters.user_id = Number(req.query.user_id);
     if (req.query.status) filters.status = req.query.status;
-        if (req.query.residence_country) filters.residence_country = req.query.residence_country;
+    if (req.query.residence_country) filters.residence_country = req.query.residence_country;
 
 
     // Total counts
@@ -216,11 +216,18 @@ export const verifyAddress = async (req, res) => {
 
       // Update user table
       if (status === "verified") {
+
+        const level = await calculateUserLevel(tx, addressVerificationDetails.user_id);
+
         await tx.users.update({
           where: { user_id: addressVerificationDetails.user_id },
-          data: { address_verified_at: new Date() },
+          data: {
+            address_verified_at: new Date(),
+            user_level: level
+          },
         });
-      } else {
+      }
+      else {
         await tx.users.update({
           where: { user_id: addressVerificationDetails.user_id },
           data: { address_verified_at: null },
@@ -237,7 +244,7 @@ export const verifyAddress = async (req, res) => {
           ? "Your address is successfully verified."
           : finalRemark;
 
-  const notification  =  await tx.notifications.create({
+      const notification = await tx.notifications.create({
         data: {
           user_id: addressVerificationDetails.user_id,
           title: title,
@@ -248,7 +255,7 @@ export const verifyAddress = async (req, res) => {
 
         },
       });
-    io.to(notification.user_id.toString()).emit("new_notification", notification);
+      io.to(notification.user_id.toString()).emit("new_notification", notification);
 
     });
 
@@ -314,12 +321,19 @@ export const verifyId = async (req, res) => {
       });
 
       // 🔹 Update user verification date
+      const updateData = {
+        id_verified_at: status === 'verified' ? new Date() : null,
+      };
+
+      if (status === 'verified') {
+        updateData.user_level = 2;
+      }
+
       await tx.users.update({
         where: { user_id: idDetails.user_id },
-        data: {
-          id_verified_at: status === 'verified' ? new Date() : null,
-        },
+        data: updateData,
       });
+
 
       // 🔹 Notification
       const title =
@@ -332,7 +346,7 @@ export const verifyId = async (req, res) => {
           ? 'Your ID is successfully verified. Now you can trade and create wallet.'
           : updateRemark;
 
-     const notification = await tx.notifications.create({
+      const notification = await tx.notifications.create({
         data: {
           user_id: idDetails.user_id,
           title,
@@ -343,7 +357,7 @@ export const verifyId = async (req, res) => {
 
         },
       });
-       io.to(notification.user_id.toString()).emit("new_notification", notification);
+      io.to(notification.user_id.toString()).emit("new_notification", notification);
 
 
       return true;
@@ -362,3 +376,21 @@ export const verifyId = async (req, res) => {
     });
   }
 };
+
+async function calculateUserLevel(tx, userId) {
+
+  const idVerified = await tx.addresses.findFirst({
+    where: { user_id: userId, status: "verified" }
+  });
+
+  const addressVerified = await tx.address_verifications.findFirst({
+    where: { user_id: userId, status: "verified" }
+  });
+
+  let level = 1;
+
+  if (idVerified) level = 2;
+  if (idVerified && addressVerified) level = 3;
+
+  return level;
+}

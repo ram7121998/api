@@ -113,4 +113,5 @@ router.get("/countries/currency", authenticateUser, getCountriesCurrency);
 router.get("/countries/dialing-code", authenticateUser, getCountriesDialingCode);
 router.get("/countries/name", authenticateUser, getCountries);
 router.get("/countries/timezone", authenticateUser, getTimezone);
+
 export default router;

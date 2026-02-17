@@ -614,3 +614,54 @@ export const preferredTimezone = async (req, res) => {
         });
     }
 };
+
+
+export const updatePhoneVerify = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const userId = req.user.user_id; // auth middleware se aayega
+
+    // Validate input
+    if (!phone) {
+      return res.status(422).json({
+        status: false,
+        message: "Phone number is required",
+      });
+    }
+
+    // Fetch user
+    const user = await prisma.users.findUnique({
+      where: { user_id: BigInt(userId) },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+      });
+    }
+
+    // Update phone and number_verify_at
+    const updatedUser = await prisma.users.update({
+      where: { user_id: BigInt(userId) },
+      data: {
+        phone,
+        number_verify_at: new Date(), // current timestamp
+      },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Phone verified successfully!",
+      phone: updatedUser.phone,
+      number_verify_at: updatedUser.number_verify_at,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: false,
+      message: "Unable to update phone verification",
+      errors: err.message,
+    });
+  }
+};

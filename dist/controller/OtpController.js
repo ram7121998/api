@@ -246,25 +246,42 @@ export const sendSmsOTP = async (req, res) => {
                 errors: errors.array(),
             });
         }
-        const { phone_number, country_code } = req.body;
-        const phone = country_code + phone_number;
+
+        const { phone_number, country_code, recaptcha_token } = req.body;
+        const phone = `${country_code}${phone_number}`;
+
+        // Firebase REST API key from env
         const firebaseApiKey = process.env.FIREBASE_API_KEY;
-        const url = `https://www.googleapis.com/identitytoolkit/v3/relyingparty/sendVerificationCode?key=${firebaseApiKey}`;
+
+        if (!firebaseApiKey) {
+            return res.status(500).json({
+                status: false,
+                message: "Firebase API key not set in environment variables."
+            });
+        }
+
+        const url = `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${firebaseApiKey}`;
+
         // ===============================
         // FIREBASE API CALL
         // ===============================
         const response = await axios.post(url, {
             phoneNumber: phone,
-            // clientType: "CLIENT_TYPE_WEB",
-            // recaptchaToken: req.body.recaptcha_token,
+            recaptchaToken: recaptcha_token, // required for web OTP verification
         });
+
+        // Firebase returns sessionInfo, which is required for OTP verification
+        const sessionInfo = response.data.sessionInfo;
+
         return res.status(200).json({
             status: true,
             message: "OTP sent successfully.",
-            data: response.data,
+            data: {
+                sessionInfo,
+                phone
+            },
         });
-    }
-    catch (err) {
+    } catch (err) {
         console.error("Firebase OTP Error:", err?.response?.data || err.message);
         return res.status(500).json({
             status: false,

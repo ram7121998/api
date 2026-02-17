@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import { sendEmailOtp, sendSmsOTP, verifyEmailOtp } from "../controller/OtpController.js";
 import { addNumber, login, logout, logoutFromOtherToken, passwordVerification, register, resetPassword, sendResetLink, updateTwoFA, updateTwoFaSet } from "../controller/user/authController.js";
-import { blockUser, changePassword, getBlockedUsers, getReferralLink, getSecurityQuestion, loginHistory, preferredCurrency, preferredTimezone, securityQuestion, unblockUser, updateBio, updateDisplayNamePreference, updateProfileImage, updateUsername, userDetail } from "../controller/user/UserController.js";
+import { blockUser, changePassword, getAccountInfo, getBlockedUsers, getP2PStats, getReferralLink, getSecurityQuestion, loginHistory, preferredCurrency, preferredTimezone, securityQuestion, unblockUser, updateBio, updateDisplayNamePreference, updatePhoneVerify, updateProfileImage, updateUsername, userDetail } from "../controller/user/UserController.js";
 import { addressVerification, getAddressVerification, getIdDetails, storeAddress } from "../controller/user/AddressVerificationController.js";
 import { singelUpload, upload, uploadAttachments } from "../middleware/upload.js";
 import { addUpiDetails, deleteMethod, getPaymentDetails, getUpiDetails, storePaymentDetails, updateIsPrimary, updatePaymentDetails, updateUpiDetails } from "../controller/user/PaymentController.js";
@@ -212,6 +212,7 @@ router.post("/block-user", authenticateUser, checkUserStatus, blockUser);
 router.post("/unblock-user", authenticateUser, checkUserStatus, unblockUser);
 router.get("/user/get-blocked-users", authenticateUser, checkUserStatus, getBlockedUsers);
 
+
 router.get("/get-referral-link", authenticateUser, checkUserStatus, getReferralLink);
 router.get("/login-history", authenticateUser, checkUserStatus, loginHistory);
 router.post("/address/address-verification", authenticateUser, checkUserStatus, upload.fields([{ name: "front_document", maxCount: 1 }, { name: "back_document", maxCount: 1 }]), addressVerification);
@@ -331,4 +332,8 @@ router.get("/countries/currency", authenticateUser, getCountriesCurrency);
 router.get("/countries/dialing-code", authenticateUser, getCountriesDialingCode);
 router.get("/countries/name", authenticateUser, getCountries);
 router.get("/countries/timezone", authenticateUser, getTimezone);
+router.get("/explore-marketplace", authenticateUser, checkUserStatus, getP2PStats);
+router.get("/get-accountinfo", authenticateUser, checkUserStatus, getAccountInfo);
+router.post("/update-phone-verify", authenticateUser, checkUserStatus, updatePhoneVerify);
+
 export default router;

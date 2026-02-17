@@ -10,6 +10,7 @@ import relativeTime from "dayjs/plugin/relativeTime.js";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
 import { userDetails } from "./CryptoAdController.js";
+import { trades_trade_status } from "@prisma/client";
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -1112,3 +1113,193 @@ async function getHasBlockedCount(userId) {
     return "0 USERS";
   }
 }
+
+export const getP2PStats = async (req, res) => {
+  try {
+    // 1️⃣ Track online users via last_seen (last 5 min)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const onlineUsers = await prisma.users.count({
+      where: { last_seen: { gte: fiveMinutesAgo } }
+    });
+
+    // 2️⃣ Active offers
+    const userOffers = await prisma.crypto_ads.count({
+      where: { is_active: true }
+    });
+
+    // 3️⃣ 24h trade volume (use correct enum)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const trades24h = await prisma.trades.aggregate({
+      _sum: { amount: true },
+      where: {
+        created_at: { gte: yesterday },
+        trade_status: trades_trade_status.success // ✅ correct enum value
+      }
+    });
+    const trade24hVolume = trades24h._sum.amount || 0;
+
+    // 4️⃣ Total liquidity
+    const totalLiquidityAgg = await prisma.crypto_ads.aggregate({
+      _sum: { remaining_trade_limit: true },
+      where: { is_active: true }
+    });
+    const totalLiquidity = totalLiquidityAgg._sum.remaining_trade_limit || 0;
+    const totalLiquidityUSD = Number(totalLiquidity).toFixed(2);
+
+    // 5️⃣ Return response
+    return res.status(200).json({
+      status: true,
+      message: "P2P marketplace stats fetched successfully",
+      data: {
+        explore: "P2P Marketplace",
+        onlineUsers,
+        userOffers,
+        trade24hVolumeUSD: trade24hVolume,
+        totalLiquidityUSD: totalLiquidityUSD
+      }
+    });
+
+  } catch (error) {
+    console.error("Get P2P Stats Error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Something went wrong",
+      errors: error.message
+    });
+  }
+};
+
+
+export const getAccountInfo = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const user = await prisma.users.findUnique({
+      where: { user_id: userId },
+      select: {
+        email_verified_at: true,
+        number_verified_at: true,
+        id_verified_at: true,
+        address_verified_at: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const level = calculateUserLevel(user);
+    const limit = getAccountLimit(level);
+    const levelName = getLevelName(level);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        accountLevel: level,
+        levelName: levelName,
+        accountLimit: limit
+      }
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+function calculateUserLevel(user) {
+  const isBasicVerified =
+    user.email_verified_at && user.number_verified_at;
+
+  const isIdVerified =
+    isBasicVerified && user.id_verified_at;
+
+  const isAddressVerified =
+    isIdVerified && user.address_verified_at;
+
+  if (isAddressVerified) return 3;
+  if (isIdVerified) return 2;
+  if (isBasicVerified) return 1;
+
+  return 0;
+}
+
+
+function getAccountLimit(level) {
+  switch (level) {
+    case 0:
+      return 0;            // Guest
+    case 1:
+      return 2000;         // Basic
+    case 2:
+      return 100000;       // Standard
+    case 3:
+      return 500000;       // Advanced
+    default:
+      return 0;
+  }
+}
+
+function getLevelName(level) {
+  switch (level) {
+    case 0: return "Guest";
+    case 1: return "Basic";
+    case 2: return "Standard";
+    case 3: return "Advanced";
+    default: return "Unknown";
+  }
+}
+
+export const updatePhoneVerify = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const userId = req.user.user_id; // auth middleware se aayega
+
+    // Validate input
+    if (!phone) {
+      return res.status(422).json({
+        status: false,
+        message: "Phone number is required",
+      });
+    }
+
+    // Fetch user
+    const user = await prisma.users.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+      });
+    }
+
+    // Update phone and number_verify_at
+    const updatedUser = await prisma.users.update({
+      where: { user_id: BigInt(userId) },
+      data: {
+        phone_number:phone,
+        number_verified_at: new Date(), // current timestamp
+      },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Phone verified successfully!",
+      phone: updatedUser.phone,
+      number_verify_at: updatedUser.number_verify_at,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: false,
+      message: "Unable to update phone verification",
+      errors: err.message,
+    });
+  }
+};
