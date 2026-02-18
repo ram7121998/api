@@ -1176,11 +1176,13 @@ export const getAccountInfo = async (req, res) => {
 
     const user = await prisma.users.findUnique({
       where: { user_id: userId },
+
       select: {
         email_verified_at: true,
         number_verified_at: true,
         id_verified_at: true,
-        address_verified_at: true
+        address_verified_at: true,
+        user_level:true
       }
     });
 
@@ -1192,15 +1194,17 @@ export const getAccountInfo = async (req, res) => {
     }
 
     const level = calculateUserLevel(user);
-    const limit = getAccountLimit(level);
-    const levelName = getLevelName(level);
+    const limit = getAccountLimit(user.user_level);
+    const levelName = getLevelName(user.user_level);
+    const levelMessage = getLevelMessage(user.user_level, limit);
 
     return res.status(200).json({
       success: true,
       data: {
-        accountLevel: level,
+        accountLevel: user.user_level,
         levelName: levelName,
-        accountLimit: limit
+        accountLimit: limit,
+        levelMessage:levelMessage
       }
     });
 
@@ -1211,6 +1215,9 @@ export const getAccountInfo = async (req, res) => {
     });
   }
 };
+
+
+
 function calculateUserLevel(user) {
   const isBasicVerified =
     user.email_verified_at && user.number_verified_at;
@@ -1229,18 +1236,33 @@ function calculateUserLevel(user) {
 }
 
 
-function getAccountLimit(level) {
+export function getAccountLimit(level) {
   switch (level) {
-    case 0:
-      return 0;            // Guest
-    case 1:
-      return 2000;         // Basic
-    case 2:
-      return 100000;       // Standard
-    case 3:
-      return 500000;       // Advanced
+    case 0: // Guest
+      return 0; // Daily limit 0 INR
+    case 1: // Basic
+      return 40000; // Minimum daily limit ₹40,000
+    case 2: // Standard
+      return 4000000; // Minimum daily limit ₹40,00,000
+    case 3: // Advanced / Merchant
+      return 16000000; // Minimum daily limit ₹1,60,00,000
     default:
       return 0;
+  }
+}
+
+function getLevelMessage(level, limit) {
+  switch (level) {
+    case 0:
+      return "You are a Guest (Level 0). P2P trading is disabled. Please complete Basic KYC.";
+    case 1:
+      return `Basic verified (Level 1). Limited P2P access (up to ₹${limit.toLocaleString()}/day).`;
+    case 2:
+      return `Standard verified (Level 2). Full P2P access (up to ₹${limit.toLocaleString()}/day).`;
+    case 3:
+      return `Advanced verified (Level 3). High P2P limits (₹${limit.toLocaleString()}/day).`;
+    default:
+      return "Merchant/VIP account with custom limits and priority access.";
   }
 }
 

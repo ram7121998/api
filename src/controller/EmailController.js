@@ -555,7 +555,7 @@ export async function sendTradeEmail(type, to, data = {}) {
         } else {
             console.error("SendGrid error:", error.message);
         }
-        throw error; // rethrow if needed
+        // throw error; // rethrow if needed
     }
 }
 

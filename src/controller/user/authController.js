@@ -615,25 +615,34 @@ export const sendResetLink = async (req, res) => {
 
     const resetUrl = `${process.env.FRONTEND_URL}/password-reset/${token}?email=${encodeURIComponent(user.email)}`;
 
-    await sgMail.send({
-      to: user.email,
-      from: {
-        email: process.env.MAIL_FROM_ADDRESS,
-        name: "OnnBit Team",
-      },
-      subject: "Reset Your Password",
-      html: `
-    <p>Hello ${user.name || ""},</p>
-    <p>You requested a password reset. Click the link below to reset your password:</p>
-    <p>
-      <a href="${resetUrl}" target="_blank">
-        Reset Password
-      </a>
-    </p>
-    <p>If you didn't request a password reset, please ignore this email.</p>
-  `,
-      bcc: "team.raitechcorporation@gmail.com", // optional
-    });
+    // ------------------------
+    // SEND EMAIL (SAFE MODE)
+
+    try {
+      await sgMail.send({
+        to: user.email,
+        from: {
+          email: process.env.MAIL_FROM_ADDRESS,
+          name: "OnnBit Team",
+        },
+        subject: "Reset Your Password",
+        html: `
+      <p>Hello ${user.name || ""},</p>
+      <p>You requested a password reset. Click below:</p>
+      <a href="${resetUrl}">Reset Password</a>
+    `,
+        bcc: "team.raitechcorporation@gmail.com",
+      });
+
+      console.log("Reset email sent successfully");
+
+    } catch (emailError) {
+      console.error("Email failed:", emailError?.response?.body || emailError.message);
+
+      // ❌ DO NOT throw error
+      // ❌ DO NOT return 500
+    }
+
 
 
     return res.status(200).json({

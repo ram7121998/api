@@ -9,6 +9,7 @@ import { userDetails } from "./CryptoAdController.js";
 import { cryptoAsset, fullAssetName, getCurrentTimeInKolkata, network, userDetail } from "../../config/ReusableCode.js";
 import moment from "moment";
 import { sendTradeEmail } from "../EmailController.js";
+import { getAccountLimit } from "./UserController.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -24,12 +25,6 @@ export const initiateTrade = async (req, res) => {
       message: "User not found",
     });
   }
-  if (user.user_level === 0) {
-    return res.status(403).json({
-      success: false,
-      message: "Please complete KYC verification to start P2P trading."
-    });
-  }
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -40,8 +35,8 @@ export const initiateTrade = async (req, res) => {
   const todayVolume = await prisma.trades.aggregate({
     where: {
       OR: [
-        { buyer_id: user.id },
-        { seller_id: user.id }
+        { buyer_id: user.user_id.toString() },
+        { seller_id: user.user_id.toString() }
       ],
       trade_status: trades_trade_status.success,
       created_at: {
@@ -50,14 +45,37 @@ export const initiateTrade = async (req, res) => {
       }
     },
     _sum: {
-      buy_value: true
+      buy_amount: true // FIAT me sum
     }
   });
 
   console.log("todayVolume",todayVolume)
 
+  const todayBuyAmount = todayVolume._sum.buy_amount || 0;
+
+
   try {
     const { ad_id, amount, currency, assetValue, trade_type } = req.body;
+  const accountLimit = getAccountLimit(user.user_level);
+
+  if (user.user_level === 0) {
+    // Level 0 cannot trade
+    return res.status(403).json({
+      status: false,
+      message: "Please complete KYC verification to start P2P trading."
+    });
+  }
+  console.log(todayBuyAmount + amount)
+  console.log(accountLimit)
+const totalAmount = Number(todayBuyAmount) + Number(amount);
+
+  // Check daily max limit
+  if (totalAmount > accountLimit) {
+    return res.status(403).json({
+      status: false,
+      message: `Daily P2P limit exceeded. Your limit is ₹${accountLimit.toLocaleString()} per day. You have already used ₹${todayBuyAmount.toLocaleString()}.`
+    });
+  }
 
     if (!ad_id || !amount || !trade_type) {
       return res.status(422).json({
@@ -66,7 +84,6 @@ export const initiateTrade = async (req, res) => {
         errors: "ad_id, amount and trade_type are required",
       });
     }
-
     const tradeType = trade_type.toLowerCase();
     if (!["buy", "sell"].includes(tradeType)) {
       return res.status(422).json({
