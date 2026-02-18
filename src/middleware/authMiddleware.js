@@ -117,7 +117,9 @@ export const authenticateUser = async (req, res, next) => {
         email: true,
         email_verified_at: true,
         address_verified_at: true,
+        user_level:true
       }
+
     });
 
 
@@ -133,7 +135,8 @@ export const authenticateUser = async (req, res, next) => {
       email_verified_at: users.email_verified_at || null,
       password: users.password,
       token,
-      tokenId: loginDetail?.token_id
+      tokenId: loginDetail?.token_id,
+      user_level:users?.user_level
     };
     next();
   } catch (err) {

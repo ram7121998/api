@@ -24,6 +24,37 @@ export const initiateTrade = async (req, res) => {
       message: "User not found",
     });
   }
+  if (user.user_level === 0) {
+    return res.status(403).json({
+      success: false,
+      message: "Please complete KYC verification to start P2P trading."
+    });
+  }
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
+  const todayVolume = await prisma.trades.aggregate({
+    where: {
+      OR: [
+        { buyer_id: user.id },
+        { seller_id: user.id }
+      ],
+      trade_status: trades_trade_status.success,
+      created_at: {
+        gte: startOfToday,
+        lte: endOfToday
+      }
+    },
+    _sum: {
+      buy_value: true
+    }
+  });
+
+  console.log("todayVolume",todayVolume)
 
   try {
     const { ad_id, amount, currency, assetValue, trade_type } = req.body;
@@ -97,34 +128,34 @@ export const initiateTrade = async (req, res) => {
     console.log(tradeAmount)
 
     const loggedInUserId = user.user_id.toString();
-const cryptoAdOwnerId = cryptoAd.user_id.toString();
-const isBlocked = await prisma.user_blocks.findFirst({
-    where: {
+    const cryptoAdOwnerId = cryptoAd.user_id.toString();
+    const isBlocked = await prisma.user_blocks.findFirst({
+      where: {
         blocked_user: loggedInUserId,
         blocked_by: cryptoAdOwnerId
-    }
-});
+      }
+    });
 
-if (isBlocked) {
-    return res.status(403).json({
+    if (isBlocked) {
+      return res.status(403).json({
         status: false,
         message: "You cannot start a trade with this user."
-    });
-}
+      });
+    }
 
-const hasBlocked = await prisma.user_blocks.findFirst({
-    where: {
+    const hasBlocked = await prisma.user_blocks.findFirst({
+      where: {
         blocked_by: loggedInUserId,
         blocked_user: cryptoAdOwnerId
-    }
-});
+      }
+    });
 
-if (hasBlocked) {
-    return res.status(403).json({
+    if (hasBlocked) {
+      return res.status(403).json({
         status: false,
         message: "You have blocked this trader. Cannot start trade."
-    });
-}
+      });
+    }
 
 
     if (tradeAmount < cryptoAd.min_trade_limit) throw new Error("You cannot trade below allowed limit.");
@@ -1743,7 +1774,7 @@ export const sellerUpdateTrade = async (req, res) => {
           seller_status: response,
           buyer_status: response,
           trade_status: response,
-            asset_send_at: dayjs().tz("Asia/Kolkata").toDate(),
+          asset_send_at: dayjs().tz("Asia/Kolkata").toDate(),
           trade_remark:
             response === "reject"
               ? "Trade rejected by seller."

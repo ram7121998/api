@@ -2,6 +2,7 @@ import moment from "moment";
 import { convertBigIntToString } from "../../config/convertBigIntToString.js";
 import prisma from "../../config/prismaClient.js";
 import { getCryptoLogo } from "../../config/ReusableCode.js";
+import { error } from "console";
 
 export const getMyCryptoAd = async (req, res) => {
     try {
@@ -174,6 +175,8 @@ export const getMyCryptoAd = async (req, res) => {
 
 export const createCryptoAd = async (req, res) => {
     let user = req.user; // user from middleware
+    console.log(user)
+
     try {
         if (!user) {
             return res.status(401).json({
@@ -181,7 +184,9 @@ export const createCryptoAd = async (req, res) => {
                 message: "Unauthorized. User not found."
             });
         }
-
+        if (user.user_level < 2) {
+            throw ("Complete Level 2 verification to create P2P ads.")
+        }
         // Convert fields similar to Laravel merge()
         req.body.require_verification =
             req.body.require_verification === "true" || req.body.require_verification === true;
@@ -440,36 +445,36 @@ export const getCryptoAd = async (req, res) => {
             },
         });
 
-let blockedByUsers = [];
-let hasBlockedUsers = [];
+        let blockedByUsers = [];
+        let hasBlockedUsers = [];
 
-if (loggedInUserId) {
-    // 1️⃣ Users who blocked me → "Blocked By"
-    blockedByUsers = await prisma.user_blocks.findMany({
-        where: { blocked_user: loggedInUserId },
-        select: { blocked_by: true }
-    });
+        if (loggedInUserId) {
+            // 1️⃣ Users who blocked me → "Blocked By"
+            blockedByUsers = await prisma.user_blocks.findMany({
+                where: { blocked_user: loggedInUserId },
+                select: { blocked_by: true }
+            });
 
-    // 2️⃣ Users I have blocked → "Has Blocked"
-    hasBlockedUsers = await prisma.user_blocks.findMany({
-        where: { blocked_by: loggedInUserId },
-        select: { blocked_user: true }
-    });
-}
+            // 2️⃣ Users I have blocked → "Has Blocked"
+            hasBlockedUsers = await prisma.user_blocks.findMany({
+                where: { blocked_by: loggedInUserId },
+                select: { blocked_user: true }
+            });
+        }
 
-// Create Sets for lookup
-const blockedByUsersSet = new Set(blockedByUsers.map(b => b.blocked_by));
-const hasBlockedUsersSet = new Set(hasBlockedUsers.map(b => b.blocked_user));
+        // Create Sets for lookup
+        const blockedByUsersSet = new Set(blockedByUsers.map(b => b.blocked_by));
+        const hasBlockedUsersSet = new Set(hasBlockedUsers.map(b => b.blocked_user));
 
-// Filter ads
-ads = ads.filter(ad => {
-    const adUserId = ad.user_id.toString();
-    return !blockedByUsersSet.has(adUserId) && !hasBlockedUsersSet.has(adUserId);
-});
+        // Filter ads
+        ads = ads.filter(ad => {
+            const adUserId = ad.user_id.toString();
+            return !blockedByUsersSet.has(adUserId) && !hasBlockedUsersSet.has(adUserId);
+        });
 
 
         ads = ads.map(ad => {
-         
+
             const adFeedbacks = feedbacks.filter(
                 f => f.user_id === ad.user_id
             );
