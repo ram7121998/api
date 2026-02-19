@@ -49,33 +49,33 @@ export const initiateTrade = async (req, res) => {
     }
   });
 
-  console.log("todayVolume",todayVolume)
+  console.log("todayVolume", todayVolume)
 
   const todayBuyAmount = todayVolume._sum.buy_amount || 0;
 
 
   try {
     const { ad_id, amount, currency, assetValue, trade_type } = req.body;
-  const accountLimit = getAccountLimit(user.user_level);
+    const accountLimit = getAccountLimit(user.user_level);
 
-  if (user.user_level === 0) {
-    // Level 0 cannot trade
-    return res.status(403).json({
-      status: false,
-      message: "Please complete KYC verification to start P2P trading."
-    });
-  }
-  console.log(todayBuyAmount + amount)
-  console.log(accountLimit)
-const totalAmount = Number(todayBuyAmount) + Number(amount);
+    if (user.user_level === 0) {
+      // Level 0 cannot trade
+      return res.status(403).json({
+        status: false,
+        message: "Please complete KYC verification to start P2P trading."
+      });
+    }
+    console.log(todayBuyAmount + amount)
+    console.log(accountLimit)
+    const totalAmount = Number(todayBuyAmount) + Number(amount);
 
-  // Check daily max limit
-  if (totalAmount > accountLimit) {
-    return res.status(403).json({
-      status: false,
-      message: `Daily P2P limit exceeded. Your limit is ₹${accountLimit.toLocaleString()} per day. You have already used ₹${todayBuyAmount.toLocaleString()}.`
-    });
-  }
+    // Check daily max limit
+    if (totalAmount > accountLimit) {
+      return res.status(403).json({
+        status: false,
+        message: `Daily P2P limit exceeded. Your limit is ₹${accountLimit.toLocaleString()} per day. You have already used ₹${todayBuyAmount.toLocaleString()}.`
+      });
+    }
 
     if (!ad_id || !amount || !trade_type) {
       return res.status(422).json({
@@ -2086,7 +2086,10 @@ export const authenticatedUserTradeHistory = async (req, res) => {
       OR: [
         { buyer_id: String(user.user_id) },
         { seller_id: String(user.user_id) }
-      ]
+      ],
+      trade_status: {
+        in: ["success", "disputedSuccess"]
+      }
     };
 
     // Optional filters
@@ -2555,6 +2558,168 @@ export const verifyReleaseOtp = async (req, res) => {
       status: false,
       message: "Unable to verify release OTP.",
       errors: error.message,
+    });
+  }
+};
+export const calculateBadge = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || !user.user_id) {
+      return res.status(400).json({
+        status: false,
+        message: "User not found"
+      });
+    }
+
+    const userIdString = user.user_id.toString();
+    const userIdBigInt = BigInt(user.user_id);
+
+    // ===============================
+    // Verification
+    // ===============================
+    const idVerified = !!user.id_verified_at;
+    const addressVerified = !!user.address_verified_at;
+
+    // ===============================
+    // Account Age
+    // ===============================
+    const accountAgeDays = user.created_at
+      ? Math.floor(
+        (Date.now() - new Date(user.created_at)) /
+        (1000 * 60 * 60 * 24)
+      )
+      : 0;
+
+    const accountOldEnough = accountAgeDays >= 90;
+
+    // ===============================
+    // Successful Trades Count
+    // ===============================
+    const successfulTrades = await prisma.trades.count({
+      where: {
+        OR: [
+          { buyer_id: userIdString },
+          { seller_id: userIdString }
+        ],
+        trade_status: "success"
+      }
+    });
+
+    // ===============================
+    // Unique Trade Partners
+    // ===============================
+    const trades = await prisma.trades.findMany({
+      where: {
+        OR: [
+          { buyer_id: userIdString },
+          { seller_id: userIdString }
+        ],
+        trade_status: "success"
+      },
+      select: {
+        buyer_id: true,
+        seller_id: true
+      }
+    });
+
+    const partners = new Set();
+
+    trades.forEach((t) => {
+      if (t.buyer_id !== userIdString) {
+        partners.add(t.buyer_id);
+      }
+      if (t.seller_id !== userIdString) {
+        partners.add(t.seller_id);
+      }
+    });
+
+    const tradePartners = partners.size;
+
+    // ===============================
+    // Reports
+    // ===============================
+    const reportCount = await prisma.reports.count({
+      where: {
+        reported_to_id: userIdBigInt
+      }
+    });
+
+    const goodBehaviour = reportCount < 5;
+
+    // ===============================
+    // Badge Qualification
+    // ===============================
+    const powerTraderEligible =
+      idVerified &&
+      addressVerified &&
+      accountOldEnough &&
+      tradePartners >= 125 &&
+      successfulTrades >= 250 &&
+      goodBehaviour;
+
+    const expertTraderEligible =
+      idVerified &&
+      addressVerified &&
+      accountOldEnough &&
+      tradePartners >= 125 &&
+      successfulTrades >= 1000 &&
+      goodBehaviour;
+
+    // ===============================
+    // 🎯 FINAL RESPONSE (Frontend Ready)
+    // ===============================
+    return res.status(200).json({
+      status: true,
+      data: {
+        powerTrader: {
+          eligible: powerTraderEligible,
+          requirements: {
+            idVerified,
+            addressVerified,
+            accountOldEnough,
+            goodBehaviour
+          },
+          progress: {
+            tradePartners: {
+              current: tradePartners,
+              required: 125
+            },
+            successfulTrades: {
+              current: successfulTrades,
+              required: 250
+            }
+          }
+        },
+
+        expertTrader: {
+          eligible: expertTraderEligible,
+          requirements: {
+            idVerified,
+            addressVerified,
+            accountOldEnough,
+            goodBehaviour
+          },
+          progress: {
+            tradePartners: {
+              current: tradePartners,
+              required: 125
+            },
+            successfulTrades: {
+              current: successfulTrades,
+              required: 1000
+            }
+          }
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Badge calculation error:", error);
+
+    return res.status(500).json({
+      status: false,
+      message: "Unable to calculate badge",
+      error: error.message
     });
   }
 };

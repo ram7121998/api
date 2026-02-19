@@ -11,6 +11,8 @@ import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
 import { userDetails } from "./CryptoAdController.js";
 import { trades_trade_status } from "@prisma/client";
+import { rdb } from "../../config/firebaseAdmin.js";
+
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -1116,26 +1118,37 @@ async function getHasBlockedCount(userId) {
 
 export const getP2PStats = async (req, res) => {
   try {
-    // 1️⃣ Track online users via last_seen (last 5 min)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const onlineUsers = await prisma.users.count({
-      where: { last_seen: { gte: fiveMinutesAgo } }
-    });
+
+    // 🔥 1️⃣ Get Online Users from Firebase
+    const snapshot = await rdb.ref("userPresence").once("value");
+    console.log("snapshot", snapshot)
+    const presenceData = snapshot.val();
+
+    let onlineUsers = 0;
+
+    if (presenceData) {
+      Object.values(presenceData).forEach(user => {
+        if (user.onlineState?.isOnline) {
+          onlineUsers++;
+        }
+      });
+    }
 
     // 2️⃣ Active offers
     const userOffers = await prisma.crypto_ads.count({
       where: { is_active: true }
     });
 
-    // 3️⃣ 24h trade volume (use correct enum)
+    // 3️⃣ 24h trade volume
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const trades24h = await prisma.trades.aggregate({
       _sum: { amount: true },
       where: {
         created_at: { gte: yesterday },
-        trade_status: trades_trade_status.success // ✅ correct enum value
+        trade_status: trades_trade_status.success
       }
     });
+
     const trade24hVolume = trades24h._sum.amount || 0;
 
     // 4️⃣ Total liquidity
@@ -1143,10 +1156,9 @@ export const getP2PStats = async (req, res) => {
       _sum: { remaining_trade_limit: true },
       where: { is_active: true }
     });
-    const totalLiquidity = totalLiquidityAgg._sum.remaining_trade_limit || 0;
-    const totalLiquidityUSD = Number(totalLiquidity).toFixed(2);
 
-    // 5️⃣ Return response
+    const totalLiquidity = totalLiquidityAgg._sum.remaining_trade_limit || 0;
+
     return res.status(200).json({
       status: true,
       message: "P2P marketplace stats fetched successfully",
@@ -1155,7 +1167,7 @@ export const getP2PStats = async (req, res) => {
         onlineUsers,
         userOffers,
         trade24hVolumeUSD: trade24hVolume,
-        totalLiquidityUSD: totalLiquidityUSD
+        totalLiquidityUSD: Number(totalLiquidity).toFixed(2)
       }
     });
 
@@ -1169,7 +1181,6 @@ export const getP2PStats = async (req, res) => {
   }
 };
 
-
 export const getAccountInfo = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -1182,7 +1193,7 @@ export const getAccountInfo = async (req, res) => {
         number_verified_at: true,
         id_verified_at: true,
         address_verified_at: true,
-        user_level:true
+        user_level: true
       }
     });
 
@@ -1204,7 +1215,7 @@ export const getAccountInfo = async (req, res) => {
         accountLevel: user.user_level,
         levelName: levelName,
         accountLimit: limit,
-        levelMessage:levelMessage
+        levelMessage: levelMessage
       }
     });
 
@@ -1305,7 +1316,7 @@ export const updatePhoneVerify = async (req, res) => {
     const updatedUser = await prisma.users.update({
       where: { user_id: BigInt(userId) },
       data: {
-        phone_number:phone,
+        phone_number: phone,
         number_verified_at: new Date(), // current timestamp
       },
     });

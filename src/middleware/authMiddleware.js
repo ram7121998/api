@@ -117,7 +117,10 @@ export const authenticateUser = async (req, res, next) => {
         email: true,
         email_verified_at: true,
         address_verified_at: true,
-        user_level:true
+        user_level:true,
+        created_at:true,
+        id_verified_at:true
+
       }
 
     });
@@ -136,7 +139,10 @@ export const authenticateUser = async (req, res, next) => {
       password: users.password,
       token,
       tokenId: loginDetail?.token_id,
-      user_level:users?.user_level
+      user_level:users?.user_level,
+      address_verified_at: users.address_verified_at || null,
+      created_at:users.created_at,
+      id_verified_at:users.id_verified_at || null,
     };
     next();
   } catch (err) {

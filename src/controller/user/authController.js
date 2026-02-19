@@ -1071,4 +1071,45 @@ export const addNumber = async (req, res) => {
     });
   }
 };
-2
+
+export const getWebsiteDetails = async (req, res) => {
+  try {
+    const websiteDetails = await prisma.website_details.findUnique({
+      where: { website_details_id: BigInt(1) },
+      select: {
+        website_details_id: true,
+        website_name: true,
+        website_url: true,
+        website_title: true,
+        updated_by: true,
+        logo_image: true,
+        favicon_image: true,
+        created_at: true,
+        updated_at: true,
+
+      },
+    });
+
+    if (!websiteDetails) {
+      return res.status(404).json({
+        status: false,
+        message: 'Website details not found.',
+      });
+    }
+    const safeData = convertBigIntToString(websiteDetails);
+
+    return res.status(200).json({
+      status: true,
+      message: 'Website details fetched successfully.',
+      data: safeData,
+    });
+
+  } catch (error) {
+    console.error('Error fetching website details:', error);
+    return res.status(500).json({
+      status: false,
+      message: 'Unable to fetch website details.',
+      errors: error.message,
+    });
+  }
+};

@@ -9167,510 +9167,537 @@
             }
         },
         "/api/block-user": {
-  "post": {
-    "tags": [
-      "User Controller"
-    ],
-    "summary": "Block a user",
-    "operationId": "blockUserOperation",
-    "requestBody": {
-      "required": true,
-      "content": {
-        "application/json": {
-          "schema": {
-            "type": "object",
-            "properties": {
-              "blocked_user": {
-                "type": "string",
-                "example": "25"
-              }
-            },
-            "required": ["blocked_user"]
-          }
-        }
-      }
-    },
-    "responses": {
-      "200": {
-        "description": "User blocked successfully",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "example": "User blocked successfully"
-                }
-              }
-            }
-          }
-        }
-      },
-      "400": {
-        "description": "Bad request",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "example": "User already blocked"
-                }
-              }
-            }
-          }
-        }
-      },
-      "401": {
-        "description": "Unauthorized",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "string",
-                  "example": "unauthorized"
-                },
-                "message": {
-                  "type": "string",
-                  "example": "User not authenticated"
-                }
-              }
-            }
-          }
-        }
-      },
-      "500": {
-        "description": "Internal error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "example": "Something went wrong"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ]
-  }
-},
-
-"/api/unblock-user": {
-  "post": {
-    "tags": [
-      "User Controller"
-    ],
-    "summary": "Unblock a user",
-    "operationId": "unblockUserOperation",
-    "requestBody": {
-      "required": true,
-      "content": {
-        "application/json": {
-          "schema": {
-            "type": "object",
-            "properties": {
-              "blocked_user": {
-                "type": "string",
-                "example": "25"
-              }
-            },
-            "required": ["blocked_user"]
-          }
-        }
-      }
-    },
-    "responses": {
-      "200": {
-        "description": "User successfully unblocked",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "boolean", "example": true },
-                "message": {
-                  "type": "string",
-                  "example": "User successfully unblocked"
-                }
-              }
-            }
-          }
-        }
-      },
-      "404": {
-        "description": "User not blocked",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "boolean", "example": false },
-                "message": {
-                  "type": "string",
-                  "example": "User is not blocked"
-                }
-              }
-            }
-          }
-        }
-      },
-      "401": {
-        "description": "Unauthorized",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "string",
-                  "example": "unauthorized"
-                },
-                "message": {
-                  "type": "string",
-                  "example": "User not authenticated"
-                }
-              }
-            }
-          }
-        }
-      },
-      "500": {
-        "description": "Internal error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "boolean", "example": false },
-                "message": {
-                  "type": "string",
-                  "example": "Something went wrong"
-                },
-                "errors": { "type": "string", "example": "Database error message" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ]
-  }
-},
-
-"/api/user/get-blocked-users": {
-  "get": {
-    "tags": [
-      "User Controller"
-    ],
-    "summary": "Retrieve the list of users blocked by the logged-in user",
-    "operationId": "getBlockedUsers",
-    "responses": {
-      "200": {
-        "description": "Blocked users retrieved successfully",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "boolean",
-                  "example": true
-                },
-                "message": {
-                  "type": "string",
-                  "example": "Blocked users retrieved successfully"
-                },
-                "data": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "blocked_user": {
-                        "type": "string",
-                        "example": "25"
-                      },
-                      "createdAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2026-02-13T10:30:00.000Z"
-                      },
-                      "blocked_user_relation": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "type": "string",
-                            "example": "John Doe"
-                          },
-                          "email": {
-                            "type": "string",
-                            "example": "john@example.com"
-                          }
-                        },
-                        "nullable": true
-                      }
+            "post": {
+                "tags": [
+                    "User Controller"
+                ],
+                "summary": "Block a user",
+                "operationId": "blockUserOperation",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "blocked_user": {
+                                        "type": "string",
+                                        "example": "25"
+                                    }
+                                },
+                                "required": [
+                                    "blocked_user"
+                                ]
+                            }
+                        }
                     }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "500": {
-        "description": "Internal error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "boolean", "example": false },
-                "message": { "type": "string", "example": "Something went wrong" },
-                "errors": { "type": "string", "example": "Error details here" }
-              }
-            }
-          }
-        }
-      },
-      "401": {
-        "description": "Unauthorized",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "string", "example": "unauthorized" },
-                "message": { "type": "string", "example": "User not authenticated" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ]
-  }
-},
-"/api/explore-marketplace": {
-  "get": {
-    "tags": [
-      "P2P Marketplace"
-    ],
-    "summary": "Retrieve P2P marketplace stats",
-    "operationId": "getP2PStats",
-    "description": "Returns online users, active offers, trade volume in last 24h, and total liquidity",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "responses": {
-      "200": {
-        "description": "P2P marketplace stats retrieved successfully",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "boolean",
-                  "example": true
                 },
-                "message": {
-                  "type": "string",
-                  "example": "P2P marketplace stats fetched successfully"
-                },
-                "data": {
-                  "type": "object",
-                  "properties": {
-                    "explore": {
-                      "type": "string",
-                      "example": "P2P Marketplace"
+                "responses": {
+                    "200": {
+                        "description": "User blocked successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User blocked successfully"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     },
-                    "onlineUsers": {
-                      "type": "integer",
-                      "example": 40256
+                    "400": {
+                        "description": "Bad request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User already blocked"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     },
-                    "userOffers": {
-                      "type": "integer",
-                      "example": 464001
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "unauthorized"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not authenticated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     },
-                    "trade24hVolumeUSD": {
-                      "type": "number",
-                      "example": 40256
-                    },
-                    "totalLiquidityUSD": {
-                      "type": "number",
-                      "example": 40256
+                    "500": {
+                        "description": "Internal error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Something went wrong"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "401": {
-        "description": "Unauthorized",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "string",
-                  "example": "unauthorized"
                 },
-                "message": {
-                  "type": "string",
-                  "example": "User not authenticated"
-                }
-              }
-            }
-          }
-        }
-      },
-      "500": {
-        "description": "Internal server error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "boolean",
-                  "example": false
-                },
-                "message": {
-                  "type": "string",
-                  "example": "Something went wrong"
-                },
-                "errors": {
-                  "type": "string",
-                  "example": "Database error details"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-},
-
-"/api/get-accountinfo": {
-  "get": {
-    "tags": [
-      "User Controller"
-    ],
-    "summary": "Retrieve user's account level and P2P limit details",
-    "operationId": "getUserAccountInfoDetails",
-    "responses": {
-      "200": {
-        "description": "Account info retrieved successfully",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "success": {
-                  "type": "boolean",
-                  "example": true
-                },
-                "data": {
-                  "type": "object",
-                  "properties": {
-                    "accountLevel": {
-                      "type": "integer",
-                      "example": 2
-                    },
-                    "levelName": {
-                      "type": "string",
-                      "example": "Standard"
-                    },
-                    "accountLimit": {
-                      "type": "integer",
-                      "example": 100000
+                "security": [
+                    {
+                        "bearerAuth": []
                     }
-                  }
-                }
-              }
+                ]
             }
-          }
-        }
-      },
-      "401": {
-        "description": "Unauthorized",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "string",
-                  "example": "unauthorized"
+        },
+        "/api/unblock-user": {
+            "post": {
+                "tags": [
+                    "User Controller"
+                ],
+                "summary": "Unblock a user",
+                "operationId": "unblockUserOperation",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "blocked_user": {
+                                        "type": "string",
+                                        "example": "25"
+                                    }
+                                },
+                                "required": [
+                                    "blocked_user"
+                                ]
+                            }
+                        }
+                    }
                 },
-                "message": {
-                  "type": "string",
-                  "example": "User not authenticated"
-                }
-              }
+                "responses": {
+                    "200": {
+                        "description": "User successfully unblocked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User successfully unblocked"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not blocked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User is not blocked"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "unauthorized"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not authenticated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Something went wrong"
+                                        },
+                                        "errors": {
+                                            "type": "string",
+                                            "example": "Database error message"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
-          }
-        }
-      },
-      "500": {
-        "description": "Internal error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "success": {
-                  "type": "boolean",
-                  "example": false
+        },
+        "/api/user/get-blocked-users": {
+            "get": {
+                "tags": [
+                    "User Controller"
+                ],
+                "summary": "Retrieve the list of users blocked by the logged-in user",
+                "operationId": "getBlockedUsers",
+                "responses": {
+                    "200": {
+                        "description": "Blocked users retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Blocked users retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "blocked_user": {
+                                                        "type": "string",
+                                                        "example": "25"
+                                                    },
+                                                    "createdAt": {
+                                                        "type": "string",
+                                                        "format": "date-time",
+                                                        "example": "2026-02-13T10:30:00.000Z"
+                                                    },
+                                                    "blocked_user_relation": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "John Doe"
+                                                            },
+                                                            "email": {
+                                                                "type": "string",
+                                                                "example": "john@example.com"
+                                                            }
+                                                        },
+                                                        "nullable": true
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Something went wrong"
+                                        },
+                                        "errors": {
+                                            "type": "string",
+                                            "example": "Error details here"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "unauthorized"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not authenticated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
-                "message": {
-                  "type": "string",
-                  "example": "Unable to retrieve account information"
-                },
-                "errors": {
-                  "type": "string",
-                  "example": "Something went wrong"
-                }
-              }
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
-          }
-        }
-      }
-    },
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ]
-  }
-},
-
+        },
+        "/api/explore-marketplace": {
+            "get": {
+                "tags": [
+                    "P2P Marketplace"
+                ],
+                "summary": "Retrieve P2P marketplace stats",
+                "operationId": "getP2PStats",
+                "description": "Returns online users, active offers, trade volume in last 24h, and total liquidity",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "P2P marketplace stats retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "P2P marketplace stats fetched successfully"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "explore": {
+                                                    "type": "string",
+                                                    "example": "P2P Marketplace"
+                                                },
+                                                "onlineUsers": {
+                                                    "type": "integer",
+                                                    "example": 40256
+                                                },
+                                                "userOffers": {
+                                                    "type": "integer",
+                                                    "example": 464001
+                                                },
+                                                "trade24hVolumeUSD": {
+                                                    "type": "number",
+                                                    "example": 40256
+                                                },
+                                                "totalLiquidityUSD": {
+                                                    "type": "number",
+                                                    "example": 40256
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "unauthorized"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not authenticated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Something went wrong"
+                                        },
+                                        "errors": {
+                                            "type": "string",
+                                            "example": "Database error details"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/get-accountinfo": {
+            "get": {
+                "tags": [
+                    "User Controller"
+                ],
+                "summary": "Retrieve user's account level and P2P limit details",
+                "operationId": "getUserAccountInfoDetails",
+                "responses": {
+                    "200": {
+                        "description": "Account info retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "accountLevel": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                },
+                                                "levelName": {
+                                                    "type": "string",
+                                                    "example": "Standard"
+                                                },
+                                                "accountLimit": {
+                                                    "type": "integer",
+                                                    "example": 100000
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "unauthorized"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not authenticated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unable to retrieve account information"
+                                        },
+                                        "errors": {
+                                            "type": "string",
+                                            "example": "Something went wrong"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/address/get-id-verification-details": {
             "get": {
                 "tags": [
@@ -11638,152 +11665,196 @@
                 ]
             }
         },
-"/api/crypto-advertisement/give-crypto-feedback": {
-  "get": {
-    "tags": ["Crypto Advertisement"],
-    "summary": "Get user feedback for crypto advertisement",
-    "description": "Fetch current user's feedback for a crypto advertisement using crypto_ad_id",
-    "operationId": "getCryptoFeedback",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "name": "crypto_ad_id",
-        "in": "query",
-        "required": true,
-        "schema": {
-          "type": "number"
-        },
-        "description": "Crypto Advertisement ID",
-        "example": 10
-      },
-      {
-        "name": "like",
-        "in": "query",
-        "required": false,
-        "schema": {
-          "type": "boolean"
-        },
-        "description": "Optional (true = like, false = dislike). Not required for GET.",
-        "example": true
-      }
-    ],
-    "responses": {
-      "200": {
-        "description": "Feedback fetched successfully",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "boolean",
-                  "example": true
-                },
-                "message": {
-                  "type": "string",
-                  "example": "Feedback found"
-                },
-                "data": {
-                  "type": "object",
-                  "nullable": true,
-                  "properties": {
-                    "feedback_id": { "type": "number", "example": 12 },
-                    "like": { "type": "boolean", "example": true },
-                    "dislike": { "type": "boolean", "example": false },
-                    "review": { "type": "string", "example": "Smooth trade" },
-                    "created_at": { "type": "string", "format": "date-time" },
-                    "updated_at": { "type": "string", "format": "date-time" },
-                    "user": {
-                      "type": "object",
-                      "properties": {
-                        "user_id": { "type": "number", "example": 5 },
-                        "name": { "type": "string", "example": "Rahul Sharma" },
-                        "profile_image": {
-                          "type": "string",
-                          "example": "https://cdn.app.com/users/rahul.png"
-                        }
-                      }
+        "/api/crypto-advertisement/give-crypto-feedback": {
+            "get": {
+                "tags": [
+                    "Crypto Advertisement"
+                ],
+                "summary": "Get user feedback for crypto advertisement",
+                "description": "Fetch current user's feedback for a crypto advertisement using crypto_ad_id",
+                "operationId": "getCryptoFeedback",
+                "security": [
+                    {
+                        "bearerAuth": []
                     }
-                  }
+                ],
+                "parameters": [
+                    {
+                        "name": "crypto_ad_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "description": "Crypto Advertisement ID",
+                        "example": 10
+                    },
+                    {
+                        "name": "like",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Optional (true = like, false = dislike). Not required for GET.",
+                        "example": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Feedback fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Feedback found"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "nullable": true,
+                                            "properties": {
+                                                "feedback_id": {
+                                                    "type": "number",
+                                                    "example": 12
+                                                },
+                                                "like": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "dislike": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                },
+                                                "review": {
+                                                    "type": "string",
+                                                    "example": "Smooth trade"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "user": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "user_id": {
+                                                            "type": "number",
+                                                            "example": 5
+                                                        },
+                                                        "name": {
+                                                            "type": "string",
+                                                            "example": "Rahul Sharma"
+                                                        },
+                                                        "profile_image": {
+                                                            "type": "string",
+                                                            "example": "https://cdn.app.com/users/rahul.png"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not found"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Crypto ad not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Crypto ad not found"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "string",
+                                            "example": "crypto_ad_id is required"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to fetch feedback"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
-              }
             }
-          }
-        }
-      },
-      "401": {
-        "description": "Unauthorized",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "boolean", "example": false },
-                "message": { "type": "string", "example": "User not found" }
-              }
-            }
-          }
-        }
-      },
-      "404": {
-        "description": "Crypto ad not found",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "boolean", "example": false },
-                "message": { "type": "string", "example": "Crypto ad not found" }
-              }
-            }
-          }
-        }
-      },
-      "422": {
-        "description": "Validation failed",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "boolean", "example": false },
-                "message": { "type": "string", "example": "Validation failed" },
-                "errors": {
-                  "type": "string",
-                  "example": "crypto_ad_id is required"
-                }
-              }
-            }
-          }
-        }
-      },
-      "500": {
-        "description": "Internal server error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "status": { "type": "boolean", "example": false },
-                "message": {
-                  "type": "string",
-                  "example": "Failed to fetch feedback"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-,
-
+        },
         "/api/crypto-advertisement/my-crypto-ad": {
             "get": {
                 "tags": [
@@ -12905,7 +12976,6 @@
                                         "type": "boolean",
                                         "example": "true"
                                     }
-                                  
                                 },
                                 "type": "object"
                             }
@@ -16198,6 +16268,190 @@
                                         }
                                     },
                                     "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/trader_program_badges": {
+            "get": {
+                "tags": [
+                    "P2P Marketplace"
+                ],
+                "summary": "Get Trader Program Badges",
+                "operationId": "getTraderProgramBadges",
+                "responses": {
+                    "200": {
+                        "description": "Trader Program Badge Details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Trader program badges fetched successfully."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "example": {
+                                                "badge": "POWER_TRADER",
+                                                "successfulTrades": 320,
+                                                "tradePartners": 140
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "unauthorized"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not authenticated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unable to fetch trader program badges"
+                                        },
+                                        "errors": {
+                                            "type": "string",
+                                            "example": "error message!"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/website-details": {
+            "get": {
+                "tags": [
+                    "P2P Marketplace"
+                ],
+                "summary": "Get Website Details",
+                "operationId": "getWebsiteDetails",
+                "responses": {
+                    "200": {
+                        "description": "Website details fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Website details fetched successfully."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "example": {
+                                                "siteName": "Cryptico",
+                                                "logoUrl": "/images/logo.png",
+                                                "contactEmail": "support@cryptico.com",
+                                                "supportNumber": "+91-7509400387",
+                                                "socialLinks": {
+                                                    "facebook": "https://facebook.com/cryptico",
+                                                    "instagram": "https://instagram.com/cryptico",
+                                                    "linkedin": "https://linkedin.com/company/cryptico"
+                                                },
+                                                "themeColor": "#ffb11a",
+                                                "footerText": "© 2024 Cryptico. All Rights Reserved."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "unauthorized"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not authenticated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unable to fetch website details"
+                                        },
+                                        "errors": {
+                                            "type": "string",
+                                            "example": "error message!"
+                                        }
+                                    }
                                 }
                             }
                         }
