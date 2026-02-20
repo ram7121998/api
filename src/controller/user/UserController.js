@@ -402,8 +402,8 @@ export const getReferralLink = async (req, res) => {
     }
 
     const referralCode = user.my_referral_code;
-
-    const referralLink = `http://localhost:5173/signup?refer=${referralCode}`;
+const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+const referralLink = `${baseUrl}/signup?refer=${referralCode}`;
 
     return res.status(200).json({
       status: true,

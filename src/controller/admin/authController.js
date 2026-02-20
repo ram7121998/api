@@ -573,3 +573,4 @@ export const updateAdmin = async (req, res) => {
     });
   }
 };
+

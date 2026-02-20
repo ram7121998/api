@@ -245,18 +245,18 @@ export const storeAddress = async (req, res) => {
             }
         }
 
-        const validIdTypes = ["passport", "driving licence", "id card"];
-        req.body.id_type = req.body.id_type?.toLowerCase();
+        // const validIdTypes = ["passport", "driving licence", "id card"];
+        // req.body.id_type = req.body.id_type?.toLowerCase();
 
-        if (!validIdTypes.includes(req.body.id_type)) {
-            return res.status(422).json({
-                status: false,
-                message: "Validation failed.",
-                errors: {
-                    id_type: ["id_type must be passport, driving licence, or id card"],
-                },
-            });
-        }
+        // if (!validIdTypes.includes(req.body.id_type)) {
+        //     return res.status(422).json({
+        //         status: false,
+        //         message: "Validation failed.",
+        //         errors: {
+        //             id_type: ["id_type must be passport, driving licence, or id card"],
+        //         },
+        //     });
+        // }
 
         // ---------------- File Validation ----------------
         if (!req.files.document_front_image || !req.files.document_back_image) {
@@ -269,9 +269,12 @@ export const storeAddress = async (req, res) => {
             });
         }
 
-        const frontImage = req.files.document_front_image[0].filename;
-        const backImage = req.files.document_back_image[0].filename;
+          const frontFile = req.files.document_front_image[0];
+        const backFile = req.files.document_back_image?.[0];
 
+        // Store only paths used in DB (like Laravel)
+        const frontPath = `images/doc_file/${frontFile.filename}`;
+        const backPath = backFile ? `images/doc_file/${backFile.filename}` : null;
         // ---------------- Transaction ----------------
         tx = await prisma.$transaction(async (tx) => {
             await tx.addresses.create({
@@ -285,8 +288,8 @@ export const storeAddress = async (req, res) => {
                     address_line1: req.body.address_line1,
                     address_line2: req.body.address_line2 || null,
                     residence_zip: req.body.residence_zip,
-                    document_front_image: `images/id_image/${frontImage}`,
-                    document_back_image: `images/id_image/${backImage}`,
+                    document_front_image: frontPath,
+                    document_back_image: backPath,
                     status: "pending",
                 },
             });

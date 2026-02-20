@@ -2483,6 +2483,357 @@
                 ]
             }
         },
+        "/api/admin/trade/recent-trade-success": {
+  "get": {
+    "tags": [
+      "Admin"
+    ],
+    "summary": "Get last 10 successful trades for admin dashboard",
+    "operationId": "getRecentSuccessfulTradesForAdmin",
+    "responses": {
+      "200": {
+        "description": "Recent successful trades fetched successfully.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Recent successful trades fetched successfully."
+                },
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "trade_id": {
+                        "type": "string",
+                        "example": "205"
+                      },
+                      "ad_id": {
+                        "type": "string",
+                        "example": "AD5689"
+                      },
+                      "asset": {
+                        "type": "string",
+                        "example": "USDT"
+                      },
+                      "amount": {
+                        "type": "string",
+                        "example": "1500.00"
+                      },
+                      "price": {
+                        "type": "string",
+                        "example": "92.30"
+                      },
+                      "buyer_id": {
+                        "type": "string",
+                        "example": "102"
+                      },
+                      "seller_id": {
+                        "type": "string",
+                        "example": "88"
+                      },
+                      "status": {
+                        "type": "string",
+                        "example": "success"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-02-20T09:20:00Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "unauthorized"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Admin not authenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Something went wrong while fetching recent successful trades."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ]
+  }
+},
+
+"/api/admin/trade/distribution-trade": {
+  "get": {
+    "tags": ["Admin"],
+    "summary": "Get trade distribution for admin dashboard (Buy, Sell, P2P Transfer)",
+    "operationId": "getTradeDistributionForAdmin",
+    "responses": {
+      "200": {
+        "description": "Trade distribution fetched successfully.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Trade distribution fetched successfully."
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "example": 100
+                    },
+                    "buy_orders": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "example": 45
+                        },
+                        "percentage": {
+                          "type": "string",
+                          "example": "45.00"
+                        }
+                      }
+                    },
+                    "sell_orders": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "example": 35
+                        },
+                        "percentage": {
+                          "type": "string",
+                          "example": "35.00"
+                        }
+                      }
+                    },
+                    "p2p_transfers": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "example": 20
+                        },
+                        "percentage": {
+                          "type": "string",
+                          "example": "20.00"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "unauthorized"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Admin not authenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Something went wrong while fetching trade distribution."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ]
+  }
+},
+"/api/admin/trade/revenue-trades": {
+  "get": {
+    "tags": ["Admin"],
+    "summary": "Get monthly revenue and trades data for admin dashboard chart",
+    "operationId": "getRevenueTradesForAdmin",
+    "parameters": [
+      {
+        "name": "year",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "example": 2026
+        },
+        "description": "Year for which revenue and trade data should be fetched"
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Revenue and trades fetched successfully.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Revenue and trades fetched successfully."
+                },
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "month": {
+                        "type": "integer",
+                        "example": 0,
+                        "description": "0 = Jan, 1 = Feb ... 11 = Dec"
+                      },
+                      "revenue": {
+                        "type": "number",
+                        "example": 5800
+                      },
+                      "trades": {
+                        "type": "integer",
+                        "example": 180
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "example": "unauthorized"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Admin not authenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Something went wrong while fetching revenue and trades."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ]
+  }
+},
         "/api/admin/feedback/get-feedback": {
             "get": {
                 "tags": [

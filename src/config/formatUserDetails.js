@@ -3,25 +3,42 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime.js";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
+import prisma from "./prismaClient.js";
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 export async function formatUserDetails(user, withCountryDetails = true) {
-  console.log("user.loggedIn_device_ip",user.loggedIn_device_ip)
+  console.log("user.loggedIn_device_ip", user.loggedIn_device_ip)
   try {
     const emailVerified = !!user.email_verified_at;
-    const phoneVerified = !!user.phone_verified_at;
-    const idVerified = !!user.id_verified_at;
-    const addressVerified = !!user.address_verified_at;
+    const phoneVerified = !!user.number_verified_at;
 
-   let countryData = {
-  country: "India",
-  countryCode: "IN",
-  city: "Unknown",
-  country_flag: "https://flagcdn.com/w320/in.png",
-};
+    const idVerification = await prisma.addresses.findFirst({
+      where: {
+        user_id: user.user_id,
+        status: "verified", // sirf verified check kar rahe
+      },
+    });
+
+    const idVerified = !!idVerification;
+
+    const addressVerification = await prisma.address_verifications.findFirst({
+      where: {
+        user_id: user.user_id,
+        status: "verified", // sirf verified check kar rahe
+      },
+    });
+
+    const addressVerified = !!addressVerification;
+
+    let countryData = {
+      country: "India",
+      countryCode: "IN",
+      city: "Unknown",
+      country_flag: "https://flagcdn.com/w320/in.png",
+    };
 
 
     // 🌐 Fetch location by IP
@@ -43,7 +60,7 @@ export async function formatUserDetails(user, withCountryDetails = true) {
         console.warn(`⚠️ Country lookup failed for IP: ${user.loggedIn_device_ip}`);
       }
     }
-console.log(user.profile_image)
+    console.log(user.profile_image)
     const imagePath = user.profile_image;
 
     const profileImageUrl =

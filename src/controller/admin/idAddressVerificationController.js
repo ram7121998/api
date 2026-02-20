@@ -45,10 +45,10 @@ export const getAddressVerificationDetails = async (req, res) => {
     const formattedDetails = addressDetails.map((item) => ({
       ...item,
       document_front_image: item.document_front_image
-        ? `${process.env.APP_URL}/storage/${item.document_front_image}`
+        ? `${process.env.BASE_URL}/storage/${item.document_front_image}`
         : null,
       document_back_image: item.document_back_image
-        ? `${process.env.APP_URL}/storage/${item.document_back_image}`
+        ? `${process.env.BASE_URL}/storage/${item.document_back_image}`
         : null,
       duration: dayjs(item.created_at).tz("Asia/Kolkata").fromNow(), // like diffForHumans
     }));

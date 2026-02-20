@@ -42,20 +42,21 @@ router.get(
   async (req, res) => {
     try {
       const user = req.user;
+      const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
       if (!user) {
-        return res.redirect("http://localhost:5173/login");
+        return res.redirect(`${FRONTEND_URL}/login`);
       }
 
       // ------------------------
       // CHECK USER STATUS
       // ------------------------
       if (user.user_status === "block") {
-        return res.redirect("http://localhost:5173/login?error=blocked");
+        return res.redirect(`${FRONTEND_URL}/login?error=blocked`);
       }
 
       if (user.user_status === "terminate") {
-        return res.redirect("http://localhost:5173/login?error=terminated");
+        return res.redirect(`${FRONTEND_URL}/login?error=terminated`);
       }
 
       // ------------------------
@@ -189,12 +190,12 @@ router.get(
       // REDIRECT FRONTEND WITH TOKEN
       // ------------------------
       return res.redirect(
-        `http://localhost:5173/auth/google/callback?token=${token}`
+        `${FRONTEND_URL}/auth/google/callback?token=${token}`
       );
 
     } catch (error) {
       console.error("Google Login Error:", error);
-      return res.redirect("http://localhost:5173/login?error=server");
+      return res.redirect(`${FRONTEND_URL}/login?error=server`);
     }
   }
 );

@@ -46,6 +46,9 @@ export const getUser = async (req, res) => {
     // KYC & verification
     const email_verified = Boolean(user.email_verified_at);
     const phone_verified = Boolean(user.number_verified_at);
+    const id_verified = Boolean(user.id_verified_at);
+    const twoFactorAuth = Boolean(user.two_factor_auth);
+
     const kycVerified = user.addresses?.some(a => a.status === "verified");
 
     // Successful address
@@ -61,6 +64,8 @@ export const getUser = async (req, res) => {
       phone_number: user.phone_number,
       email_verified,
       phone_verified,
+      id_verified,
+      twoFactorAuth,
       kyc_verified: kycVerified,
       profile_image_url: profileImage,
       country: user.country || null,

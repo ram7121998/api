@@ -20,7 +20,7 @@ import { createAdminAsset, getAdminAssets, updateAdminAssets } from "../controll
 import { get } from "http";
 import { getCountries, getCountriesCurrency, getCountriesDialingCode, getTimezone } from "../controller/CountryController.js";
 import { deleteNotification, storeNotification } from "../controller/admin/AdminNotificationController.js";
-import { getDashboard } from "../controller/admin/DashboardController.js";
+import { getDashboard ,getRecentSuccessTrades, getRevenueAndTrades, getTradeDistribution} from "../controller/admin/DashboardController.js";
 import { uploadAttachments } from "../middleware/upload.js";
 import { createFeedbackFromAdmin, getFeedback } from "../controller/admin/FeedbackController.js";
 import { requirePermission } from "../middleware/permissionMiddleware.js";
@@ -173,6 +173,8 @@ router.post("/admin/support/close-dispute", formData, authenticateAdmin, require
 router.post("/admin/support/resart-new-trade", formData, authenticateAdmin, requirePermission("support"), resertNewTrade);
 router.post("/admin/trade/cancel-trade", formData, authenticateAdmin, cancelTradeByAdmin);
 router.post("/admin/trade/system-message", formData, authenticateAdmin, sendSystemMessage);
-
+router.get("/admin/trade/recent-trade-success", formData, authenticateAdmin, getRecentSuccessTrades);
+router.get("/admin/trade/distribution-trade", formData, authenticateAdmin, getTradeDistribution);
+router.get("/admin/trade/revenue-trades", formData, authenticateAdmin, getRevenueAndTrades);
 
 export default router;
