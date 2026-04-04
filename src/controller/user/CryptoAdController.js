@@ -695,6 +695,13 @@ export const updateCryptoAd = async (req, res) => {
             offer_margin,
             offer_time_limit
         } = req.body;
+        console.log({
+            cryptoAd_id,
+            min_trade_limit,
+            max_trade_limit,
+            offer_margin,
+            offer_time_limit
+        });
 
         // Convert all numeric fields
         const minLimit = min_trade_limit !== undefined ? Number(min_trade_limit) : undefined;
@@ -712,11 +719,12 @@ export const updateCryptoAd = async (req, res) => {
         if (!cryptoAd_id || isNaN(Number(cryptoAd_id))) {
             errors.cryptoAd_id = ["cryptoAd_id is required and must be numeric"];
         }
-
-        // min_trade_limit >= 50 (Laravel rule)
-        if (min_trade_limit !== undefined && (isNaN(minLimit) || minLimit < 50)) {
-            errors.min_trade_limit = ["min_trade_limit must be numeric and >= 50"];
-        }
+if (min_trade_limit != null) {  // checks not null AND not undefined
+    const minLimit = Number(min_trade_limit);
+    if (isNaN(minLimit) || minLimit < 50) {
+        errors.min_trade_limit = ["min_trade_limit must be numeric and >= 50"];
+    }
+}
 
         // max_trade_limit >= min_trade_limit
         if (max_trade_limit !== undefined) {
@@ -727,15 +735,19 @@ export const updateCryptoAd = async (req, res) => {
             }
         }
 
-        // offer_margin >= 1
-        if (offer_margin !== undefined && (isNaN(margin) || margin < 1)) {
-            errors.offer_margin = ["offer_margin must be numeric and >= 1"];
-        }
+    if (offer_margin != null) {  // checks both null and undefined
+    const marginValue = Number(offer_margin);
+    if (isNaN(marginValue) || marginValue < 1) {
+        errors.offer_margin = ["offer_margin must be numeric and >= 1"];
+    }
+}
 
-        // offer_time_limit >= 10
-        if (offer_time_limit !== undefined && (isNaN(timeLimit) || timeLimit < 10)) {
-            errors.offer_time_limit = ["offer_time_limit must be >= 10"];
-        }
+     if (offer_time_limit != null) {  // checks both null and undefined
+    const timeLimit = Number(offer_time_limit);
+    if (isNaN(timeLimit) || timeLimit < 10) {
+        errors.offer_time_limit = ["offer_time_limit must be >= 10"];
+    }
+}
 
         // If any validation failed
         if (Object.keys(errors).length > 0) {
@@ -834,7 +846,7 @@ export const updateCryptoAd = async (req, res) => {
     } catch (err) {
         return res.status(500).json({
             status: false,
-            message: "Failed to update crypto advertisement.",
+            message:  err.message,
             errors: err.message,
         });
     }

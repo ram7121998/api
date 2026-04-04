@@ -447,26 +447,52 @@ const getINREquivalent = async (asset, amount) => {
     const priceInINR = await getCryptoPriceInINR(asset); // You implement API call
     return parseFloat(amount) * parseFloat(priceInINR);
 };
+// export const getCryptoPriceInINR = async (asset) => {
+
+
+//     try {
+//         // Convert symbol to CoinGecko id
+//         const coinMap = {
+//             btc: 'bitcoin',
+//             eth: 'ethereum',
+//             usdt: 'tether',
+//             bnb: 'binancecoin',
+//         };
+
+//         const coinId = coinMap[asset.toLowerCase()];
+//         if (!coinId) return 0;
+
+//         const response = await axios.get(
+//             `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=inr`
+//         );
+
+//         return response.data[coinId].inr || 0;
+//     } catch (err) {
+//         console.error('Error fetching crypto price:', err.message);
+//         return 0;
+//     }
+// };
+
+
 export const getCryptoPriceInINR = async (asset) => {
-    try {
-        // Convert symbol to CoinGecko id
-        const coinMap = {
-            btc: 'bitcoin',
-            eth: 'ethereum',
-            usdt: 'tether',
-            bnb: 'binancecoin',
-        };
+  try {
+    const coinMap = {
+      btc: "BTC",
+      eth: "ETH",
+      usdt: "USDT",
+      bnb: "BNB",
+    };
 
-        const coinId = coinMap[asset.toLowerCase()];
-        if (!coinId) return 0;
+    const symbol = coinMap[asset.toLowerCase()];
+    if (!symbol) return 0;
 
-        const response = await axios.get(
-            `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=inr`
-        );
+    const response = await axios.get(
+      `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${symbol}&tsyms=INR`
+    );
 
-        return response.data[coinId].inr || 0;
-    } catch (err) {
-        console.error('Error fetching crypto price:', err.message);
-        return 0;
-    }
+    return response.data[symbol]?.INR || 0;
+  } catch (err) {
+    console.error("Error fetching crypto price:", err.message);
+    return 0;
+  }
 };

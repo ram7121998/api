@@ -485,6 +485,14 @@ export const updateCryptoAd = async (req, res) => {
         const maxLimit = max_trade_limit !== undefined ? Number(max_trade_limit) : undefined;
         const margin = offer_margin !== undefined ? Number(offer_margin) : undefined;
         const timeLimit = offer_time_limit !== undefined ? Number(offer_time_limit) : undefined;
+        console.log({
+            "dsd":
+            cryptoAd_id,
+            minLimit,
+            maxLimit,
+            margin,
+            timeLimit
+        });
         const errors = {};
         // ---------------------------
         // VALIDATION
