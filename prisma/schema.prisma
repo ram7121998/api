@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = "mysql://u678001706_p2pbackend:Admin$2026@auth-db1827.hstgr.io:3306/u678001706_p2pbackend"
+  relationMode = "prisma"
 }
 
 model address_verifications {
@@ -688,6 +689,24 @@ model website_details {
   updated_by         String?   @db.LongText
   created_at         DateTime? @db.Timestamp(0)
   updated_at         DateTime? @db.Timestamp(0)
+}
+
+model MarketData {
+  id          Int      @id @default(autoincrement())
+  symbol      String   @unique
+  baseAsset   String
+  quoteAsset  String
+  openPrice   Decimal  @default(0) // Default value सेट करने से एरर नहीं आएगी
+  lowPrice    Decimal  @default(0)
+  highPrice   Decimal  @default(0)
+  lastPrice   Decimal  @default(0)
+  volume      Decimal  @default(0)
+  bidPrice    Decimal  @default(0)
+  askPrice    Decimal  @default(0)
+  at          BigInt
+  updatedAt   DateTime @updatedAt
+
+  @@map("MarketData")
 }
 
 enum settings_withdraw_status {

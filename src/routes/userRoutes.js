@@ -28,7 +28,7 @@ import passport from "../config/password.js";
 import DeviceDetector from "device-detector-js";
 import prisma from "../config/prismaClient.js";
 import dayjs from "dayjs";
-
+import {getMarketData} from "../controller/user/MarketDataPrice.js"; 
 const router = express.Router();
 router.get(
   "/auth/google",
@@ -338,5 +338,7 @@ router.get("/get-accountinfo", authenticateUser, checkUserStatus, getAccountInfo
 router.post("/update-phone-verify", authenticateUser, checkUserStatus, updatePhoneVerify);
 router.get("/trader_program_badges", authenticateUser, checkUserStatus, calculateBadge);
 router.get("/website-details", getWebsiteDetails);
+router.get("/market-price", getMarketData );
+
 
 export default router;

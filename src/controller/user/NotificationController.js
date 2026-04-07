@@ -8,6 +8,7 @@ dayjs.extend(relativeTime);
 export const getAllNotifications = async (req, res) => {
     try {
         const user = req.user;
+        console.log("notification",user)
 
         if (!user) {
             return res.status(401).json({

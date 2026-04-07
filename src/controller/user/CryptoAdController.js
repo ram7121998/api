@@ -589,11 +589,11 @@ export const updateCryptoAdIsActive = async (req, res) => {
                 throw new Error("Crypto Ad not found.");
             }
 
-            if (cryptoAd.is_accepted) {
-                throw new Error(
-                    "The selected ad is currently involved in an active trade. Please try again once the trade is completed."
-                );
-            }
+            // if (cryptoAd.is_accepted) {
+            //     throw new Error(
+            //         "The selected ad is currently involved in an active trade. Please try again once the trade is completed."
+            //     );
+            // }
 
             // Update status
             return await tx.crypto_ads.update({
@@ -616,17 +616,83 @@ export const updateCryptoAdIsActive = async (req, res) => {
     }
 };
 
+// export const updateAllCryptoAdIsActive = async (req, res) => {
+//     const user = req.user;
+
+//     try {
+//         // Convert string to boolean (same as Laravel ->boolean())
+//         let { is_active } = req.body;
+//         is_active = String(is_active) === "true" ? true : false;
+
+//         // -----------------------
+//         // Validation
+//         // -----------------------
+//         if (typeof is_active !== "boolean") {
+//             return res.status(422).json({
+//                 status: false,
+//                 message: "Validation failed",
+//                 errors: { is_active: ["is_active must be boolean"] },
+//             });
+//         }
+
+//         // -----------------------
+//         // Transaction
+//         // -----------------------
+//         const result = await prisma.$transaction(async (tx) => {
+//             // Get all crypto ads for user
+//             const cryptoAds = await tx.crypto_ads.findMany({
+//                 where: { user_id: BigInt(user.user_id) },
+//             });
+
+//             if (!cryptoAds.length) {
+//                 throw new Error("Crypto Ad not found.");
+//             }
+
+//             const acceptedErrors = [];
+
+//             for (const ad of cryptoAds) {
+//                 // If ad is accepted & user is trying to turn OFF -> error
+//                 if (ad.is_accepted && is_active === false) {
+//                     acceptedErrors.push({
+//                         crypto_ad_id: ad.crypto_ad_id,
+//                         errors:
+//                             "The ad is currently involved in an active trade. Please try again once the trade is completed.",
+//                     });
+//                 } else {
+//                     // Update status
+//                     await tx.crypto_ads.update({
+//                         where: { crypto_ad_id: BigInt(ad.crypto_ad_id) },
+//                         data: { is_active: is_active },
+//                     });
+//                 }
+//             }
+
+//             return acceptedErrors;
+//         });
+
+//         return res.status(200).json({
+//             status: true,
+//             message: `All the Crypto ads are now ${is_active ? "active" : "inactive"}`,
+//             errors: result, // list of accepted errors
+//         });
+//     } catch (err) {
+//         return res.status(500).json({
+//             status: false,
+//             message: "Unable to update the crypto ads.",
+//             errors: err.message,
+//         });
+//     }
+// };
+
 export const updateAllCryptoAdIsActive = async (req, res) => {
     const user = req.user;
 
     try {
-        // Convert string to boolean (same as Laravel ->boolean())
         let { is_active } = req.body;
-        is_active = String(is_active) === "true" ? true : false;
+        
+        // Convert to boolean
+        is_active = String(is_active) === "true" || is_active === true;
 
-        // -----------------------
-        // Validation
-        // -----------------------
         if (typeof is_active !== "boolean") {
             return res.status(422).json({
                 status: false,
@@ -638,52 +704,48 @@ export const updateAllCryptoAdIsActive = async (req, res) => {
         // -----------------------
         // Transaction
         // -----------------------
-        const result = await prisma.$transaction(async (tx) => {
-            // Get all crypto ads for user
-            const cryptoAds = await tx.crypto_ads.findMany({
+        await prisma.$transaction(async (tx) => {
+            // Check if user has any ads
+            const adsCount = await tx.crypto_ads.count({
                 where: { user_id: BigInt(user.user_id) },
             });
 
-            if (!cryptoAds.length) {
-                throw new Error("Crypto Ad not found.");
+            if (adsCount === 0) {
+                throw new Error("No Crypto Ads found for this user.");
             }
 
-            const acceptedErrors = [];
+            /**
+             * LOGIC: 
+             * 1. Sabhi ads ka is_active status update karein.
+             * 2. Agar user ads ko DEACTIVATE (is_active: false) kar raha hai,
+             * toh hum unka is_accepted status bhi false kar denge 
+             * taaki active trades close ho jayein.
+             */
+            const updateData = { is_active: is_active };
 
-            for (const ad of cryptoAds) {
-                // If ad is accepted & user is trying to turn OFF -> error
-                if (ad.is_accepted && is_active === false) {
-                    acceptedErrors.push({
-                        crypto_ad_id: ad.crypto_ad_id,
-                        errors:
-                            "The ad is currently involved in an active trade. Please try again once the trade is completed.",
-                    });
-                } else {
-                    // Update status
-                    await tx.crypto_ads.update({
-                        where: { crypto_ad_id: BigInt(ad.crypto_ad_id) },
-                        data: { is_active: is_active },
-                    });
-                }
+            if (is_active === false) {
+                updateData.is_accepted = false;
             }
 
-            return acceptedErrors;
+            await tx.crypto_ads.updateMany({
+                where: { user_id: BigInt(user.user_id) },
+                data: updateData,
+            });
         });
 
         return res.status(200).json({
             status: true,
-            message: `All the Crypto ads are now ${is_active ? "active" : "inactive"}`,
-            errors: result, // list of accepted errors
+            message: `All Crypto ads have been successfully ${is_active ? "activated" : "deactivated"}.`,
         });
+
     } catch (err) {
-        return res.status(500).json({
+        return res.status(400).json({
             status: false,
             message: "Unable to update the crypto ads.",
             errors: err.message,
         });
     }
 };
-
 export const updateCryptoAd = async (req, res) => {
     const user = req.user;
 
@@ -695,87 +757,55 @@ export const updateCryptoAd = async (req, res) => {
             offer_margin,
             offer_time_limit
         } = req.body;
-        console.log({
-            cryptoAd_id,
-            min_trade_limit,
-            max_trade_limit,
-            offer_margin,
-            offer_time_limit
-        });
-
-        // Convert all numeric fields
-        const minLimit = min_trade_limit !== undefined ? Number(min_trade_limit) : undefined;
-        const maxLimit = max_trade_limit !== undefined ? Number(max_trade_limit) : undefined;
-        const margin = offer_margin !== undefined ? Number(offer_margin) : undefined;
-        const timeLimit = offer_time_limit !== undefined ? Number(offer_time_limit) : undefined;
 
         const errors = {};
 
         // ---------------------------
-        // VALIDATION
+        // VALIDATION & CONVERSION
         // ---------------------------
-
-        // cryptoAd_id required and numeric
         if (!cryptoAd_id || isNaN(Number(cryptoAd_id))) {
             errors.cryptoAd_id = ["cryptoAd_id is required and must be numeric"];
         }
-if (min_trade_limit != null) {  // checks not null AND not undefined
-    const minLimit = Number(min_trade_limit);
-    if (isNaN(minLimit) || minLimit < 50) {
-        errors.min_trade_limit = ["min_trade_limit must be numeric and >= 50"];
-    }
-}
 
-        // max_trade_limit >= min_trade_limit
-        if (max_trade_limit !== undefined) {
-            if (isNaN(maxLimit)) {
-                errors.max_trade_limit = ["max_trade_limit must be numeric"];
-            } else if (minLimit !== undefined && maxLimit < minLimit) {
-                errors.max_trade_limit = ["max_trade_limit must be >= min_trade_limit"];
+        // Helper function to validate and convert only if value is provided and not null
+        const validateField = (val, minVal, fieldName) => {
+            if (val === undefined || val === null || val === "") return undefined;
+            const num = Number(val);
+            if (isNaN(num) || num < minVal) {
+                errors[fieldName] = [`${fieldName} must be numeric and >= ${minVal}`];
             }
+            return num;
+        };
+
+        const minLimit = validateField(min_trade_limit, 50, "min_trade_limit");
+        const maxLimit = validateField(max_trade_limit, 1, "max_trade_limit");
+        const margin = validateField(offer_margin, 1, "offer_margin");
+        const timeLimit = validateField(offer_time_limit, 10, "offer_time_limit");
+
+        // Special check for max vs min
+        if (minLimit && maxLimit && maxLimit < minLimit) {
+            errors.max_trade_limit = ["max_trade_limit must be >= min_trade_limit"];
         }
 
-    if (offer_margin != null) {  // checks both null and undefined
-    const marginValue = Number(offer_margin);
-    if (isNaN(marginValue) || marginValue < 1) {
-        errors.offer_margin = ["offer_margin must be numeric and >= 1"];
-    }
-}
-
-     if (offer_time_limit != null) {  // checks both null and undefined
-    const timeLimit = Number(offer_time_limit);
-    if (isNaN(timeLimit) || timeLimit < 10) {
-        errors.offer_time_limit = ["offer_time_limit must be >= 10"];
-    }
-}
-
-        // If any validation failed
         if (Object.keys(errors).length > 0) {
-            return res.status(422).json({
-                status: false,
-                message: "Validation failed.",
-                errors,
-            });
+            return res.status(422).json({ status: false, message: "Validation failed.", errors });
         }
 
         // ---------------------------
-        // CHECK AT LEAST ONE FIELD
+        // BUILD DYNAMIC UPDATE OBJECT
         // ---------------------------
-        const updatableFields = [
-            "min_trade_limit",
-            "max_trade_limit",
-            "offer_margin",
-            "offer_time_limit"
-        ];
+        const updateData = {};
+        
+        // Sirf wahi fields add honge jo null, undefined ya empty string nahi hain
+        if (minLimit !== undefined) updateData.min_trade_limit = minLimit;
+        if (maxLimit !== undefined) updateData.max_trade_limit = maxLimit;
+        if (margin !== undefined) updateData.offer_margin = margin;
+        if (timeLimit !== undefined) updateData.offer_time_limit = timeLimit;
 
-        const atLeastOne = updatableFields.some(
-            (f) => req.body[f] !== undefined && req.body[f] !== ""
-        );
-
-        if (!atLeastOne) {
+        if (Object.keys(updateData).length === 0) {
             return res.status(400).json({
                 status: false,
-                message: "At least one field is required.",
+                message: "No valid fields provided for update.",
             });
         }
 
@@ -783,7 +813,6 @@ if (min_trade_limit != null) {  // checks not null AND not undefined
         // DATABASE TRANSACTION
         // ---------------------------
         await prisma.$transaction(async (tx) => {
-            // Find ad
             const cryptoAd = await tx.crypto_ads.findFirst({
                 where: {
                     crypto_ad_id: Number(cryptoAd_id),
@@ -793,65 +822,43 @@ if (min_trade_limit != null) {  // checks not null AND not undefined
 
             if (!cryptoAd) throw new Error("Crypto Ad not found for this id.");
 
+            // Trade active check
             if (cryptoAd.is_accepted) {
-                throw new Error(
-                    "The selected ad is currently involved in an active trade. Please try again once the trade is completed."
-                );
+                throw new Error("Ad is involved in an active trade. Cannot update.");
             }
 
-            if (cryptoAd.is_active) {
-                throw new Error(
-                    "The selected ad is currently active. Please deactivate it first before proceeding."
-                );
-            }
-
-            // Build update object
-            const updateData = {};
-
-            if (minLimit !== undefined) updateData.min_trade_limit = minLimit;
-            if (maxLimit !== undefined) updateData.max_trade_limit = maxLimit;
-            if (margin !== undefined) updateData.offer_margin = margin;
-            if (timeLimit !== undefined) updateData.offer_time_limit = timeLimit;
-
-            // Update ad
+            // Perform Update
             const updatedAd = await tx.crypto_ads.update({
                 where: { crypto_ad_id: Number(cryptoAd_id) },
-                data: updateData,
+                data: updateData, // Isme ab null values nahi hain
             });
 
-            // Create notification
+            // Notification logic...
             const notification = await tx.notifications.create({
                 data: {
                     user_id: user.user_id,
-                    title: "Crypto Ad updated successfully.",
-                    message: `You have successfully updated your Crypto Advertisement to ${updatedAd.transaction_type} ${updatedAd.cryptocurrency}.`,
+                    title: "Crypto Ad updated.",
+                    message: `Updated ${updatedAd.transaction_type} ${updatedAd.cryptocurrency}.`,
                     type: "account_activity",
                     is_read: false,
                     created_at: new Date()
-
                 },
             });
-            io.to(notification.user_id.toString()).emit("new_notification", notification);
-
+            if (global.io) io.to(notification.user_id.toString()).emit("new_notification", notification);
         });
 
-        // ---------------------------
-        // SUCCESS RESPONSE
-        // ---------------------------
         return res.status(200).json({
             status: true,
             message: "Crypto advertisement updated successfully.",
         });
 
     } catch (err) {
-        return res.status(500).json({
+        return res.status(400).json({
             status: false,
-            message:  err.message,
-            errors: err.message,
+            message: err.message,
         });
     }
-};
-
+}
 
 
 

@@ -1322,391 +1322,14 @@ export const buyerUpdateTrade = async (req, res) => {
 
 
 
-// export const sellerUpdateTrade = async (req, res) => {
-//   const user = req.user; // Logged in user (seller)
-//   const D = (n) => new Prisma.Decimal(n);
-
-//   try {
-//     // ===============================
-//     // VALIDATION
-//     // ===============================
-//     const { trade_id, response, chat } = req.body;
-
-//     if (!trade_id || isNaN(trade_id)) {
-//       return res.status(422).json({
-//         status: false,
-//         message: "Validation failed.",
-//         errors: { trade_id: ["Trade not found for given trade id"] }
-//       });
-//     }
-
-//     if (!["success", "reject"].includes(response)) {
-//       return res.status(422).json({
-//         status: false,
-//         message: "response must be success or reject"
-//       });
-//     }
-
-//     // ===============================
-//     // Trade Found?
-//     // ===============================
-//     const tradeDetails = await prisma.trades.findFirst({
-//       where: {
-//         seller_id: String(user.user_id),
-//         trade_id: Number(trade_id)
-//       }
-//     });
-//     console.log("tradeDetails", tradeDetails)
-
-//     if (!tradeDetails) {
-//       return res.status(404).json({
-//         status: false,
-//         message: "Trade not found"
-//       });
-//     }
-
-//     // Cancel Check
-//     if (tradeDetails.trade_status === "cancel") {
-//       return res.status(422).json({
-//         status: false,
-//         message: "Trade has been cancelled."
-//       });
-//     }
-
-//     if (tradeDetails.trade_step < 2) {
-//       return res.status(422).json({
-//         status: false,
-//         message: "No payment confirmation from buyer."
-//       });
-//     }
-
-//     if (tradeDetails.trade_step > 2) {
-//       return res.status(422).json({
-//         status: false,
-//         message: "Step already completed. Wait for final update."
-//       });
-//     }
-
-//     // ===============================
-//     // Start Transaction
-//     // ===============================
-//     await prisma.$transaction(async (tx) => {
-
-//       const mainAdminAssetDetails = await tx.admin_assets.findFirst({
-//         where: {
-//           asset: tradeDetails.asset,
-//           network: fullAssetName(tradeDetails.asset)
-//         }
-//       });
-
-//       if (!mainAdminAssetDetails)
-//         throw new Error("Asset not found.");
-
-//       if (mainAdminAssetDetails.status !== "active")
-//         throw new Error("Address is not active.");
-
-//       // Update Trade
-//       const avgMin =
-//         Math.floor((Date.now() - new Date(tradeDetails.created_at)) / 60000);
-
-//       await tx.trades.update({
-//         where: { trade_id: BigInt(trade_id) },
-//         data: {
-//           seller_status: response,
-//           buyer_status: response,
-//           trade_status: response,
-//           trade_remark:
-//             response === "reject"
-//               ? "Trade rejected by seller."
-//               : "Trade successfully completed.",
-//           avg_trade_time: `${avgMin} min`,
-//           chat: chat || null,
-//           trade_step: "THREE",
-//           status_changed_at: new Date()
-//         }
-//       });
-
-//       // Update Crypto Ad
-//       const cryptoAd = await tx.crypto_ads.findFirst({
-//         where: { crypto_ad_id: tradeDetails.crypto_ad_id }
-//       });
-
-//       let tradeTimes = await tx.trades.findMany({
-//         where: {
-//           crypto_ad_id: String(cryptoAd.crypto_ad_id),
-//           trade_id: { not: BigInt(trade_id) }
-//         },
-//         select: { avg_trade_time: true }
-//       });
-
-//       tradeTimes.push({ avg_trade_time: `${avgMin} min` });
-
-//       const total = tradeTimes.reduce(
-//         (sum, t) => sum + parseInt(t.avg_trade_time),
-//         0
-//       );
-
-//       const newAvg = Math.floor(total / tradeTimes.length);
-
-//       await tx.crypto_ads.update({
-//         where: { crypto_ad_id: cryptoAd.crypto_ad_id },
-//         data: {
-//           avg_time: `${newAvg} min`,
-//           is_accepted: response === "success" ? false : true
-//         }
-//       });
-
-//       const buyerDetails = await tx.users.findFirst({
-//         where: { user_id: BigInt(tradeDetails.buyer_id) }
-//       });
-
-//       if (!buyerDetails) throw new Error("Buyer not found.");
-
-//       // ===============================
-//       // SUCCESS = process wallet
-//       // ===============================
-//       if (response === "success") {
-//         const sellerWallet = await tx.web3_wallets.findFirst({
-//           where: {
-//             user_id: tradeDetails.seller_id,
-//             asset: cryptoAsset(tradeDetails.asset),
-//             network: network(tradeDetails.asset)
-//           }
-//         });
-
-//         if (!sellerWallet) throw new Error("Seller wallet not found");
-
-//         console.log("Buyerwallet", tradeDetails)
-
-//         const buyerWallet = await tx.web3_wallets.findFirst({
-//           where: {
-//             user_id: String(tradeDetails.buyer_id),
-//             asset: cryptoAsset(tradeDetails.asset),
-//             network: network(tradeDetails.asset)
-//           }
-//         });
-
-//         if (!buyerWallet) throw new Error("Buyer wallet not found");
-
-//         // Seller Wallet Update
-//         const sellerRemaining = D(sellerWallet.remaining_amount).sub(
-//           D(tradeDetails.hold_asset)
-//         );
-
-//         await tx.transactions.create({
-//           data: {
-//             user_id: tradeDetails.seller_id,
-//             txn_type: "internal",
-//             from_address: sellerWallet.wallet_address,
-//             to_address: buyerWallet.wallet_address,
-//             txn_hash_id: genTxnHash(tradeDetails.seller_id),
-//             asset: sellerWallet.asset,
-//             network: sellerWallet.network,
-//             available_amount: dec(sellerWallet.remaining_amount),
-//             debit_amount: dec(tradeDetails.hold_asset),
-//             credit_amount: 0,
-//             remaining_amount: sellerRemaining,
-//             method: "send",
-//             status: "success",
-//             remark: "By selling the asset",
-//             date_time: String(Date.now()),
-//             created_at: new Date()
-//           }
-//         });
-
-//         await tx.web3_wallets.update({
-//           where: { wallet_id: BigInt(sellerWallet.wallet_id) },
-//           data: {
-//             withdrawal_amount: (
-//               Number(sellerWallet.withdrawal_amount) + Number(tradeDetails.hold_asset)
-//             ).toString(),
-//             remaining_amount: Number(sellerRemaining),
-
-//             hold_asset: (
-//               Number(sellerWallet.hold_asset) - Number(tradeDetails.hold_asset)
-//             ),
-
-//             created_at: new Date(),
-//             updated_at: new Date()
-//           }
-//         });
-
-//         // Buyer Fee Calculation
-//         const { transferFee, transferPercentage } = feeDetails(
-//           mainAdminAssetDetails.withdrawal_fee_type,
-//           mainAdminAssetDetails.withdrawal_fee,
-//           tradeDetails.hold_asset
-//         );
-
-//         const paidAmount = tradeDetails.hold_asset - transferFee;
-
-//         // Update Admin Revenue
-//         await tx.admin_assets.update({
-//           where: { admin_asset_id: mainAdminAssetDetails.admin_asset_id },
-//           data: { total_revenue: mainAdminAssetDetails.total_revenue + transferFee }
-//         });
-
-
-//         // Buyer Wallet update
-//         const buyerRemaining = D(buyerWallet.remaining_amount).add(
-//           D(paidAmount)
-//         );
-
-//         await tx.transactions.create({
-//           data: {
-//             user_id: BigInt(tradeDetails.buyer_id),
-//             txn_type: "internal",
-//             from_address: sellerWallet.wallet_address,
-//             to_address: buyerWallet.wallet_address,
-//             txn_hash_id: genTxnHash(tradeDetails.buyer_id),
-//             asset: buyerWallet.asset,
-//             network: buyerWallet.network,
-//             credit_amount: dec(tradeDetails.hold_asset),
-//             debit_amount: 0,
-//             transfer_fee: dec(transferFee),
-//             transfer_percentage: transferPercentage,
-//             paid_amount: paidAmount,
-//             available_amount: buyerWallet.remaining_amount,
-//             remaining_amount: buyerRemaining,
-//             method: "receive",
-//             status: "success",
-//             remark: "By buying the asset",
-//             date_time: String(Date.now()),
-//             created_at: new Date()
-
-//           }
-//         });
-
-//         await tx.web3_wallets.update({
-//           where: { wallet_id: BigInt(buyerWallet.wallet_id) },
-//           data: {
-//             deposit_amount: (
-//               Number(buyerWallet.deposit_amount) + Number(paidAmount)
-//             ).toString(),
-
-//             remaining_amount: Number(buyerRemaining),
-
-//             internal_deposit: (
-//               Number(buyerWallet.internal_deposit) + Number(paidAmount)
-//             ),
-
-//             created_at: new Date(),
-//             updated_at: new Date()
-//           }
-//         });
-//       }
-
-//       // Notifications
-//       const sellerNotification = await tx.notifications.create({
-//         data: {
-//           user_id: BigInt(tradeDetails.seller_id),
-//           title: response === "success" ? "Trade Completed" : "Trade Rejected",
-//           message:
-//             response === "success"
-//               ? "Your sell trade has been completed."
-//               : "You have rejected the trade.",
-//           operation_type: "sell_trade",
-//           operation_id: tradeDetails.trade_id.toString(), // convert BigInt -> String
-//           type: "trade",
-//           created_at: new Date(),
-//           is_read: false
-//         }
-//       });
-//       const tradefind = await prisma.trades.findUnique({
-//         where: { trade_id: BigInt(tradeDetails.trade_id) },
-//       });
-
-//       const roomBuyer = tradefind.buyer_id.toString();
-//       const roomSeller = tradefind.seller_id.toString();
-
-//       io.to(roomBuyer).emit("new_notification", {
-//         type: "ACTIVE_TRADE_UPDATE",
-//         payload: tradefind,
-//       });
-
-//       io.to(roomSeller).emit("new_notification", {
-//         type: "ACTIVE_TRADE_UPDATE",
-//         payload: tradefind,
-//       });
-
-
-//       const buyerNotification = await tx.notifications.create({
-//         data: {
-//           user_id: BigInt(tradeDetails.buyer_id),
-//           title: response === "success" ? "Trade Completed" : "Trade Rejected",
-//           message:
-//             response === "success"
-//               ? "Your buy trade has been completed successfully."
-//               : "Trade has been rejected by seller.",
-//           operation_type: "buy_trade",
-//           created_at: new Date(),
-//           operation_id: tradeDetails.trade_id.toString(), // convert BigInt -> String
-//           type: "trade",
-//           is_read: false
-//         }
-//       });
-//       io.to(tradeDetails.seller_id.toString()).emit("new_notification", sellerNotification);
-//       io.to(tradeDetails.buyer_id.toString()).emit("new_notification", buyerNotification);
-//     }, { maxWait: 20000, timeout: 20000 });
-
-//     const buyer = await prisma.users.findUnique({
-//       where: { user_id: BigInt(tradeDetails.buyer_id) },
-//       select: { email: true, name: true, username: true }
-//     });
-
-//     const seller = await prisma.users.findUnique({
-//       where: { user_id: BigInt(tradeDetails.seller_id) },
-//       select: { email: true, name: true, username: true }
-//     });
-
-//     await sendTradeEmail(
-//       "TRADE_COMPLETED",
-//       buyer.email,
-//       {
-//         user_name: buyer.username,
-//         trade_id: tradeDetails.trade_id.toString(),
-//         amount_fiat: tradeDetails.amount,
-//         asset: tradeDetails.asset,
-//         counterparty_name: seller.username,
-//         side: "buyer",
-
-//       }
-//     );
-//     await sendTradeEmail(
-//       "TRADE_COMPLETED",
-//       seller.email,
-//       {
-//         user_name: seller.username,
-//         trade_id: tradeDetails.trade_id.toString(),
-//         amount_fiat: tradeDetails.amount,
-//         asset: tradeDetails.asset,
-//         counterparty_name: buyer.username,
-//         side: "seller",
-
-//       }
-//     );
-
-
-//     return res.json({
-//       status: true,
-//       message: "Trade updated and completed successfully."
-//     });
-
-//   } catch (err) {
-//     return res.status(500).json({
-//       status: false,
-//       message: "Unable to update trade.",
-//       errors: err.message
-//     });
-//   }
-// };
-
-
 export const sellerUpdateTrade = async (req, res) => {
   const user = req.user; // Logged in user (seller)
   const D = (n) => new Prisma.Decimal(n);
 
   try {
+    // ===============================
+    // VALIDATION
+    // ===============================
     const { trade_id, response, chat } = req.body;
 
     if (!trade_id || isNaN(trade_id)) {
@@ -1724,12 +1347,16 @@ export const sellerUpdateTrade = async (req, res) => {
       });
     }
 
+    // ===============================
+    // Trade Found?
+    // ===============================
     const tradeDetails = await prisma.trades.findFirst({
       where: {
         seller_id: String(user.user_id),
         trade_id: Number(trade_id)
       }
     });
+    console.log("tradeDetails", tradeDetails)
 
     if (!tradeDetails) {
       return res.status(404).json({
@@ -1738,6 +1365,7 @@ export const sellerUpdateTrade = async (req, res) => {
       });
     }
 
+    // Cancel Check
     if (tradeDetails.trade_status === "cancel") {
       return res.status(422).json({
         status: false,
@@ -1759,17 +1387,10 @@ export const sellerUpdateTrade = async (req, res) => {
       });
     }
 
+    // ===============================
+    // Start Transaction
+    // ===============================
     await prisma.$transaction(async (tx) => {
-
-      /* ===============================
-         🔹 SETTINGS FETCH (ADDED)
-      =============================== */
-      const settings = await tx.settings.findFirst();
-      if (!settings) throw new Error("Settings not found");
-
-      const tradeFeePercent = Number(settings.trade_fee || 0); // e.g. 1.0 %
-
-      /* =============================== */
 
       const mainAdminAssetDetails = await tx.admin_assets.findFirst({
         where: {
@@ -1778,10 +1399,13 @@ export const sellerUpdateTrade = async (req, res) => {
         }
       });
 
-      if (!mainAdminAssetDetails) throw new Error("Asset not found.");
+      if (!mainAdminAssetDetails)
+        throw new Error("Asset not found.");
+
       if (mainAdminAssetDetails.status !== "active")
         throw new Error("Address is not active.");
 
+      // Update Trade
       const avgMin =
         Math.floor((Date.now() - new Date(tradeDetails.created_at)) / 60000);
 
@@ -1791,7 +1415,6 @@ export const sellerUpdateTrade = async (req, res) => {
           seller_status: response,
           buyer_status: response,
           trade_status: response,
-          asset_send_at: dayjs().tz("Asia/Kolkata").toDate(),
           trade_remark:
             response === "reject"
               ? "Trade rejected by seller."
@@ -1803,8 +1426,46 @@ export const sellerUpdateTrade = async (req, res) => {
         }
       });
 
-      if (response === "success") {
+      // Update Crypto Ad
+      const cryptoAd = await tx.crypto_ads.findFirst({
+        where: { crypto_ad_id: tradeDetails.crypto_ad_id }
+      });
 
+      let tradeTimes = await tx.trades.findMany({
+        where: {
+          crypto_ad_id: String(cryptoAd.crypto_ad_id),
+          trade_id: { not: BigInt(trade_id) }
+        },
+        select: { avg_trade_time: true }
+      });
+
+      tradeTimes.push({ avg_trade_time: `${avgMin} min` });
+
+      const total = tradeTimes.reduce(
+        (sum, t) => sum + parseInt(t.avg_trade_time),
+        0
+      );
+
+      const newAvg = Math.floor(total / tradeTimes.length);
+
+      await tx.crypto_ads.update({
+        where: { crypto_ad_id: cryptoAd.crypto_ad_id },
+        data: {
+          avg_time: `${newAvg} min`,
+          is_accepted: response === "success" ? false : true
+        }
+      });
+
+      const buyerDetails = await tx.users.findFirst({
+        where: { user_id: BigInt(tradeDetails.buyer_id) }
+      });
+
+      if (!buyerDetails) throw new Error("Buyer not found.");
+
+      // ===============================
+      // SUCCESS = process wallet
+      // ===============================
+      if (response === "success") {
         const sellerWallet = await tx.web3_wallets.findFirst({
           where: {
             user_id: tradeDetails.seller_id,
@@ -1812,6 +1473,10 @@ export const sellerUpdateTrade = async (req, res) => {
             network: network(tradeDetails.asset)
           }
         });
+
+        if (!sellerWallet) throw new Error("Seller wallet not found");
+
+        console.log("Buyerwallet", tradeDetails)
 
         const buyerWallet = await tx.web3_wallets.findFirst({
           where: {
@@ -1821,28 +1486,12 @@ export const sellerUpdateTrade = async (req, res) => {
           }
         });
 
-        if (!sellerWallet || !buyerWallet)
-          throw new Error("Wallet not found");
+        if (!buyerWallet) throw new Error("Buyer wallet not found");
 
-        /* ===============================
-           🔹 TRADE FEE CALCULATION (ADDED)
-        =============================== */
-
-        const totalFee = D(tradeDetails.hold_asset)
-          .mul(tradeFeePercent)
-          .div(100);               // 1%
-
-        const sellerFee = totalFee.div(2); // 0.5%
-        const buyerFee = totalFee.div(2);  // 0.5%
-
-        const buyerReceiveAmount = D(tradeDetails.hold_asset).sub(buyerFee);
-
-        /* =============================== */
-
-        // SELLER WALLET UPDATE
-        const sellerRemaining = D(sellerWallet.remaining_amount)
-          .sub(D(tradeDetails.hold_asset))
-          .sub(sellerFee);
+        // Seller Wallet Update
+        const sellerRemaining = D(sellerWallet.remaining_amount).sub(
+          D(tradeDetails.hold_asset)
+        );
 
         await tx.transactions.create({
           data: {
@@ -1855,7 +1504,7 @@ export const sellerUpdateTrade = async (req, res) => {
             network: sellerWallet.network,
             available_amount: dec(sellerWallet.remaining_amount),
             debit_amount: dec(tradeDetails.hold_asset),
-            transfer_fee: dec(sellerFee),
+            credit_amount: 0,
             remaining_amount: sellerRemaining,
             method: "send",
             status: "success",
@@ -1868,16 +1517,39 @@ export const sellerUpdateTrade = async (req, res) => {
         await tx.web3_wallets.update({
           where: { wallet_id: BigInt(sellerWallet.wallet_id) },
           data: {
+            withdrawal_amount: (
+              Number(sellerWallet.withdrawal_amount) + Number(tradeDetails.hold_asset)
+            ).toString(),
             remaining_amount: Number(sellerRemaining),
-            hold_asset:
-              Number(sellerWallet.hold_asset) - Number(tradeDetails.hold_asset),
+
+            hold_asset: (
+              Number(sellerWallet.hold_asset) - Number(tradeDetails.hold_asset)
+            ),
+
+            created_at: new Date(),
             updated_at: new Date()
           }
         });
 
-        // BUYER WALLET UPDATE
+        // Buyer Fee Calculation
+        const { transferFee, transferPercentage } = feeDetails(
+          mainAdminAssetDetails.withdrawal_fee_type,
+          mainAdminAssetDetails.withdrawal_fee,
+          tradeDetails.hold_asset
+        );
+
+        const paidAmount = tradeDetails.hold_asset - transferFee;
+
+        // Update Admin Revenue
+        await tx.admin_assets.update({
+          where: { admin_asset_id: mainAdminAssetDetails.admin_asset_id },
+          data: { total_revenue: mainAdminAssetDetails.total_revenue + transferFee }
+        });
+
+
+        // Buyer Wallet update
         const buyerRemaining = D(buyerWallet.remaining_amount).add(
-          buyerReceiveAmount
+          D(paidAmount)
         );
 
         await tx.transactions.create({
@@ -1889,9 +1561,11 @@ export const sellerUpdateTrade = async (req, res) => {
             txn_hash_id: genTxnHash(tradeDetails.buyer_id),
             asset: buyerWallet.asset,
             network: buyerWallet.network,
-            credit_amount: dec(buyerReceiveAmount),
-            transfer_fee: dec(buyerFee),
-            paid_amount: buyerReceiveAmount,
+            credit_amount: dec(tradeDetails.hold_asset),
+            debit_amount: 0,
+            transfer_fee: dec(transferFee),
+            transfer_percentage: transferPercentage,
+            paid_amount: paidAmount,
             available_amount: buyerWallet.remaining_amount,
             remaining_amount: buyerRemaining,
             method: "receive",
@@ -1899,33 +1573,119 @@ export const sellerUpdateTrade = async (req, res) => {
             remark: "By buying the asset",
             date_time: String(Date.now()),
             created_at: new Date()
+
           }
         });
 
         await tx.web3_wallets.update({
           where: { wallet_id: BigInt(buyerWallet.wallet_id) },
           data: {
+            deposit_amount: (
+              Number(buyerWallet.deposit_amount) + Number(paidAmount)
+            ).toString(),
+
             remaining_amount: Number(buyerRemaining),
-            internal_deposit:
-              Number(buyerWallet.internal_deposit) +
-              Number(buyerReceiveAmount),
+
+            internal_deposit: (
+              Number(buyerWallet.internal_deposit) + Number(paidAmount)
+            ),
+
+            created_at: new Date(),
             updated_at: new Date()
           }
         });
-
-        /* ===============================
-           🔹 ADMIN EARNING (ADDED)
-        =============================== */
-        await tx.admin_assets.update({
-          where: { admin_asset_id: mainAdminAssetDetails.admin_asset_id },
-          data: {
-            total_revenue:
-              Number(mainAdminAssetDetails.total_revenue) +
-              Number(totalFee)
-          }
-        });
       }
+
+      // Notifications
+      const sellerNotification = await tx.notifications.create({
+        data: {
+          user_id: BigInt(tradeDetails.seller_id),
+          title: response === "success" ? "Trade Completed" : "Trade Rejected",
+          message:
+            response === "success"
+              ? "Your sell trade has been completed."
+              : "You have rejected the trade.",
+          operation_type: "sell_trade",
+          operation_id: tradeDetails.trade_id.toString(), // convert BigInt -> String
+          type: "trade",
+          created_at: new Date(),
+          is_read: false
+        }
+      });
+      const tradefind = await prisma.trades.findUnique({
+        where: { trade_id: BigInt(tradeDetails.trade_id) },
+      });
+
+      const roomBuyer = tradefind.buyer_id.toString();
+      const roomSeller = tradefind.seller_id.toString();
+
+      io.to(roomBuyer).emit("new_notification", {
+        type: "ACTIVE_TRADE_UPDATE",
+        payload: tradefind,
+      });
+
+      io.to(roomSeller).emit("new_notification", {
+        type: "ACTIVE_TRADE_UPDATE",
+        payload: tradefind,
+      });
+
+
+      const buyerNotification = await tx.notifications.create({
+        data: {
+          user_id: BigInt(tradeDetails.buyer_id),
+          title: response === "success" ? "Trade Completed" : "Trade Rejected",
+          message:
+            response === "success"
+              ? "Your buy trade has been completed successfully."
+              : "Trade has been rejected by seller.",
+          operation_type: "buy_trade",
+          created_at: new Date(),
+          operation_id: tradeDetails.trade_id.toString(), // convert BigInt -> String
+          type: "trade",
+          is_read: false
+        }
+      });
+      io.to(tradeDetails.seller_id.toString()).emit("new_notification", sellerNotification);
+      io.to(tradeDetails.buyer_id.toString()).emit("new_notification", buyerNotification);
+    }, { maxWait: 20000, timeout: 20000 });
+
+    const buyer = await prisma.users.findUnique({
+      where: { user_id: BigInt(tradeDetails.buyer_id) },
+      select: { email: true, name: true, username: true }
     });
+
+    const seller = await prisma.users.findUnique({
+      where: { user_id: BigInt(tradeDetails.seller_id) },
+      select: { email: true, name: true, username: true }
+    });
+
+    await sendTradeEmail(
+      "TRADE_COMPLETED",
+      buyer.email,
+      {
+        user_name: buyer.username,
+        trade_id: tradeDetails.trade_id.toString(),
+        amount_fiat: tradeDetails.amount,
+        asset: tradeDetails.asset,
+        counterparty_name: seller.username,
+        side: "buyer",
+
+      }
+    );
+    await sendTradeEmail(
+      "TRADE_COMPLETED",
+      seller.email,
+      {
+        user_name: seller.username,
+        trade_id: tradeDetails.trade_id.toString(),
+        amount_fiat: tradeDetails.amount,
+        asset: tradeDetails.asset,
+        counterparty_name: buyer.username,
+        side: "seller",
+
+      }
+    );
+
 
     return res.json({
       status: true,
@@ -1940,6 +1700,248 @@ export const sellerUpdateTrade = async (req, res) => {
     });
   }
 };
+
+
+// export const sellerUpdateTrade = async (req, res) => {
+//   const user = req.user; // Logged in user (seller)
+//   const D = (n) => new Prisma.Decimal(n);
+
+//   try {
+//     const { trade_id, response, chat } = req.body;
+
+//     if (!trade_id || isNaN(trade_id)) {
+//       return res.status(422).json({
+//         status: false,
+//         message: "Validation failed.",
+//         errors: { trade_id: ["Trade not found for given trade id"] }
+//       });
+//     }
+
+//     if (!["success", "reject"].includes(response)) {
+//       return res.status(422).json({
+//         status: false,
+//         message: "response must be success or reject"
+//       });
+//     }
+
+//     const tradeDetails = await prisma.trades.findFirst({
+//       where: {
+//         seller_id: String(user.user_id),
+//         trade_id: Number(trade_id)
+//       }
+//     });
+
+//     if (!tradeDetails) {
+//       return res.status(404).json({
+//         status: false,
+//         message: "Trade not found"
+//       });
+//     }
+
+//     if (tradeDetails.trade_status === "cancel") {
+//       return res.status(422).json({
+//         status: false,
+//         message: "Trade has been cancelled."
+//       });
+//     }
+
+//     if (tradeDetails.trade_step < 2) {
+//       return res.status(422).json({
+//         status: false,
+//         message: "No payment confirmation from buyer."
+//       });
+//     }
+
+//     if (tradeDetails.trade_step > 2) {
+//       return res.status(422).json({
+//         status: false,
+//         message: "Step already completed. Wait for final update."
+//       });
+//     }
+
+//     await prisma.$transaction(async (tx) => {
+
+//       /* ===============================
+//          🔹 SETTINGS FETCH (ADDED)
+//       =============================== */
+//       const settings = await tx.settings.findFirst();
+//       if (!settings) throw new Error("Settings not found");
+
+//       const tradeFeePercent = Number(settings.trade_fee || 0); // e.g. 1.0 %
+
+//       /* =============================== */
+
+//       const mainAdminAssetDetails = await tx.admin_assets.findFirst({
+//         where: {
+//           asset: tradeDetails.asset,
+//           network: fullAssetName(tradeDetails.asset)
+//         }
+//       });
+
+//       if (!mainAdminAssetDetails) throw new Error("Asset not found.");
+//       if (mainAdminAssetDetails.status !== "active")
+//         throw new Error("Address is not active.");
+
+//       const avgMin =
+//         Math.floor((Date.now() - new Date(tradeDetails.created_at)) / 60000);
+
+//       await tx.trades.update({
+//         where: { trade_id: BigInt(trade_id) },
+//         data: {
+//           seller_status: response,
+//           buyer_status: response,
+//           trade_status: response,
+//           asset_send_at: dayjs().tz("Asia/Kolkata").toDate(),
+//           trade_remark:
+//             response === "reject"
+//               ? "Trade rejected by seller."
+//               : "Trade successfully completed.",
+//           avg_trade_time: `${avgMin} min`,
+//           chat: chat || null,
+//           trade_step: "THREE",
+//           status_changed_at: new Date()
+//         }
+//       });
+
+//       if (response === "success") {
+
+//         const sellerWallet = await tx.web3_wallets.findFirst({
+//           where: {
+//             user_id: tradeDetails.seller_id,
+//             asset: cryptoAsset(tradeDetails.asset),
+//             network: network(tradeDetails.asset)
+//           }
+//         });
+
+//         const buyerWallet = await tx.web3_wallets.findFirst({
+//           where: {
+//             user_id: String(tradeDetails.buyer_id),
+//             asset: cryptoAsset(tradeDetails.asset),
+//             network: network(tradeDetails.asset)
+//           }
+//         });
+
+//         if (!sellerWallet || !buyerWallet)
+//           throw new Error("Wallet not found");
+
+//         /* ===============================
+//            🔹 TRADE FEE CALCULATION (ADDED)
+//         =============================== */
+
+//         const totalFee = D(tradeDetails.hold_asset)
+//           .mul(tradeFeePercent)
+//           .div(100);               // 1%
+
+//         const sellerFee = totalFee.div(2); // 0.5%
+//         const buyerFee = totalFee.div(2);  // 0.5%
+
+//         const buyerReceiveAmount = D(tradeDetails.hold_asset).sub(buyerFee);
+
+//         /* =============================== */
+
+//         // SELLER WALLET UPDATE
+//         const sellerRemaining = D(sellerWallet.remaining_amount)
+//           .sub(D(tradeDetails.hold_asset))
+//           .sub(sellerFee);
+
+//         await tx.transactions.create({
+//           data: {
+//             user_id: tradeDetails.seller_id,
+//             txn_type: "internal",
+//             from_address: sellerWallet.wallet_address,
+//             to_address: buyerWallet.wallet_address,
+//             txn_hash_id: genTxnHash(tradeDetails.seller_id),
+//             asset: sellerWallet.asset,
+//             network: sellerWallet.network,
+//             available_amount: dec(sellerWallet.remaining_amount),
+//             debit_amount: dec(tradeDetails.hold_asset),
+//             transfer_fee: dec(sellerFee),
+//             remaining_amount: sellerRemaining,
+//             method: "send",
+//             status: "success",
+//             remark: "By selling the asset",
+//             date_time: String(Date.now()),
+//             created_at: new Date()
+//           }
+//         });
+
+//         await tx.web3_wallets.update({
+//           where: { wallet_id: BigInt(sellerWallet.wallet_id) },
+//           data: {
+//             remaining_amount: Number(sellerRemaining),
+//             hold_asset:
+//               Number(sellerWallet.hold_asset) - Number(tradeDetails.hold_asset),
+//             updated_at: new Date()
+//           }
+//         });
+
+//         // BUYER WALLET UPDATE
+//         const buyerRemaining = D(buyerWallet.remaining_amount).add(
+//           buyerReceiveAmount
+//         );
+
+//         await tx.transactions.create({
+//           data: {
+//             user_id: BigInt(tradeDetails.buyer_id),
+//             txn_type: "internal",
+//             from_address: sellerWallet.wallet_address,
+//             to_address: buyerWallet.wallet_address,
+//             txn_hash_id: genTxnHash(tradeDetails.buyer_id),
+//             asset: buyerWallet.asset,
+//             network: buyerWallet.network,
+//             credit_amount: dec(buyerReceiveAmount),
+//             transfer_fee: dec(buyerFee),
+//             paid_amount: buyerReceiveAmount,
+//             available_amount: buyerWallet.remaining_amount,
+//             remaining_amount: buyerRemaining,
+//             method: "receive",
+//             status: "success",
+//             remark: "By buying the asset",
+//             date_time: String(Date.now()),
+//             created_at: new Date()
+//           }
+//         });
+
+//         await tx.web3_wallets.update({
+//           where: { wallet_id: BigInt(buyerWallet.wallet_id) },
+//           data: {
+//             remaining_amount: Number(buyerRemaining),
+//             internal_deposit:
+//               Number(buyerWallet.internal_deposit) +
+//               Number(buyerReceiveAmount),
+//             updated_at: new Date()
+//           }
+//         });
+
+//         /* ===============================
+//            🔹 ADMIN EARNING (ADDED)
+//         =============================== */
+//         await tx.admin_assets.update({
+//           where: { admin_asset_id: mainAdminAssetDetails.admin_asset_id },
+//           data: {
+//             total_revenue:
+//               Number(mainAdminAssetDetails.total_revenue) +
+//               Number(totalFee)
+//           }
+//         });
+//       }
+//     });
+
+//     return res.json({
+//       status: true,
+//       message: "Trade updated and completed successfully."
+//     });
+
+//   } catch (err) {
+//     return res.status(500).json({
+//       status: false,
+//       message: "Unable to update trade.",
+//       errors: err.message,
+//           stack: err.stack, // 👈 add this
+
+//     });
+//   }
+// };
 
 export const tradeExpired = async (req, res) => {
   const user = req.user;
